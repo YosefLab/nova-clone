@@ -25,8 +25,8 @@ Together, these notebooks cover both:
 Clone the repository and install dependencies:
 
 ```bash
-git clone git@github.com:sprillo/clone-calling.git
-cd clone-calling
+git clone git@github.com:YosefLab/nova-clone.git
+cd nova-clone
 
 # Option 1 (recommended)
 conda env create -f environment.yml
