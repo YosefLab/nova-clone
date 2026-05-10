@@ -1,0 +1,9 @@
+editdistance
+matplotlib
+networkx
+numpy
+pandas
+pytest
+scikit-learn
+tqdm
+git+https://github.com/YosefLab/Cassiopeia@master#egg=cassiopeia-lineage
