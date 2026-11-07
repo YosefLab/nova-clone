@@ -1104,6 +1104,142 @@ def test_recursive_clone_calling_algorithm_mini():
     }
 
 
+def test_recursive_clone_calling_algorithm_larger():
+    """
+    Same as test_recursive_clone_calling_algorithm_mini but with many cells.
+
+    Subclone structure is:
+
+        root
+         |
+        A,B  (first round of integration)
+         |
+        /  \
+       C    D  (second round of integration)
+       |    |
+      ABC  ABD
+    """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(0)
+
+    n_cell_copies = 10
+
+    intbc_table = pd.DataFrame(
+        data=[
+            [f"cellBC_1_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_1_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_1_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_11_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_11_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_11_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_2_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_2_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_2_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_22_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_22_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_22_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_3_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_3_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_3_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_33_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_33_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_33_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_4_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_4_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_4_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_44_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_44_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_44_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_5_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_5_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call_namedtuple = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,
+        min_intbc_fraction=-0.1,
+        recursive=True,
+    )
+    clone_call = clone_call_namedtuple.clone_call
+    recursive_clone_call = clone_call_namedtuple.recursive_clone_call
+    _check_are_clones(
+        clone_call=clone_call,
+        expected_clones=[  # all cells
+            [f"sample1_cellBC_1_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_11_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_2_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_22_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_3_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_33_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_4_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_44_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_5_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_6_{i}" for i in range(n_cell_copies)]
+        ],
+    )
+    _check_are_clones(
+        clone_call=recursive_clone_call["clone_0"].clone_call,
+        expected_clones=[[]
+            + [f"sample1_cellBC_1_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_11_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_2_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_22_{i}" for i in range(n_cell_copies)]
+        ] + [ []
+            + [f"sample1_cellBC_3_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_33_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_4_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_44_{i}" for i in range(n_cell_copies)]
+        ],
+    )
+    print(
+        f"clone_call_namedtuple.recursive_clone_call_integration_hierarchy = {clone_call_namedtuple.recursive_clone_call_integration_hierarchy}"
+    )
+    assert clone_call_namedtuple.recursive_clone_call_integration_hierarchy == {
+        "clone_0": (
+            {"AAA", "BBB"},
+            {
+                "clone_0": ({"CCC"}, None),
+                "clone_1": ({"DDD"}, None),
+            },
+        ),
+    }
+
+
 def test_recursive_clone_calling_algorithm_on_real_data():
     """
     Tests the recursive clone calling algorithm on real data.
