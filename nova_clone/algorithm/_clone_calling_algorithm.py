@@ -7,20 +7,16 @@ The main function exposed by this module is the `clone_calling_algorithm`.
 import logging
 import sys
 import time
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from pandas.api.types import is_signed_integer_dtype, is_string_dtype
 
 from ._build_intbc_graph import build_intbc_graph
 from ._call_clones_from_coresets import call_clones_from_coresets
-from ._compute_cellbc_vs_coreset_overlap_matrix import (
-    compute_cellbc_vs_coreset_overlap_matrix,
-)
 from ._compute_coreset_co_assignment_matrix import compute_coreset_co_assignment_matrix
 from ._find_maximal_coresets import find_maximal_coresets
 from ._keep_reliable_edges import keep_reliable_edges
