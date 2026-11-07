@@ -274,7 +274,7 @@ def clone_calling_algorithm(
     recursive_min_fraction_uniquely_mapped_cells_to_recurse: float = 0.7,
     recursive_min_cells_assigned: int = 10,
     # Single-intBC clone recovery
-    recover_single_intBC_clones: bool = False,
+    recover_single_intbc_clones: bool = False,
     ##### Private parameters (we do not expect the user to ever have to change these) #####
     _sequencing_error_pruning_step__co_occurrence_cutoff: float = 0.5,
     _homoplastic_pruning_step__p_max_cutoff: float = 0.5,
@@ -363,7 +363,7 @@ def clone_calling_algorithm(
             Subclones tend to be smaller than the parent clone, so it is a good
             idea to set this lower than the original
             min_cells_assigned.
-        recover_single_intBC_clones: If `True`, single-intBC clones will also be
+        recover_single_intbc_clones: If `True`, single-intBC clones will also be
             recovered. Use this if your data contains single-intBC clones. There
             is an inherent tradeoff in trying to recover single-intBC clones: since
             these clones have weaker statistical support, unless you are certain
@@ -477,6 +477,12 @@ def clone_calling_algorithm(
     if _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set is None:
         _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set = min_intbc_cellbc_count
 
+    if recover_single_intbc_clones:
+        # We set the min_coreset_size to size to 1.
+        # This retains isolated vertices in the starting coreset family.
+        _preliminary_coreset_building_step__min_coreset_size = 1
+
+
     st = time.time()
 
     logger = logging.getLogger(__name__)
@@ -553,6 +559,7 @@ def clone_calling_algorithm(
         graph=intbc_graph,
         min_coreset_size=_preliminary_coreset_building_step__min_coreset_size,  # noqa
         min_overlap_for_merging_coresets=_preliminary_coreset_building_step__min_overlap_for_merging_coresets,  # noqa
+        recover_single_intbc_clones=recover_single_intbc_clones,
     ).maximal_coresets
 
     # Find aliased coresets; we first need to assign the cells to the coresets.
