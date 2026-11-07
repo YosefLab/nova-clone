@@ -167,8 +167,76 @@ def drop_clones(
     cell_intbc_sets: Dict[CellBCType, Set[IntBCType]]
         => we drop the dropped cells from here.
     """
-    raise NotImplementedError
+    clone_to_cells_mapping = clone_call.clone_to_cells_mapping
+    cell_to_clones_mapping = clone_call.cell_to_clones_mapping
+    clone_intbc_sets = clone_call.clone_intbc_sets
+    cell_intbc_sets = clone_call.cell_intbc_sets
+    new_clone_to_cells_mapping = defaultdict(set)
+    new_cell_to_clones_mapping = {}
+    new_clone_intbc_sets = defaultdict(set)
+    new_cell_intbc_sets = {}
+    for clone in clone_to_cells_mapping:
+        if clone not in clones:
+            new_clone_to_cells_mapping[clone] = clone_to_cells_mapping[clone]
+    for cell in cell_to_clones_mapping:
+        cell_clones = cell_to_clones_mapping[cell]
+        new_cell_clones = set()
+        for clone in cell_clones:
+            if clone not in clones:
+                new_cell_clones.add(clone)
+        new_cell_to_clones_mapping[cell] = new_cell_clones
+    for clone in clone_intbc_sets:
+        intbcs = clone_intbc_sets[clone]
+        if clone not in clones:
+            new_clone_intbc_sets[clone] = intbcs
+    for cell in cell_intbc_sets:
+        if len(new_cell_to_clones_mapping[cell]) == 0:
+            new_cell_intbc_sets[cell] = set()
+        else:
+            new_cell_intbc_sets[cell] = cell_intbc_sets[cell]
+    return CloneCallType(
+        clone_to_cells_mapping=new_clone_to_cells_mapping,
+        cell_to_clones_mapping=new_cell_to_clones_mapping,
+        clone_intbc_sets=new_clone_intbc_sets,
+        cell_intbc_sets=new_cell_intbc_sets,
+    )
 
 
-# def test_drop_clones():
-#     raise NotImplementedError
+def test_drop_clones():
+    clone_call = _get_test_clone_call()
+    clone_call = drop_clones(
+        clones=["clone_2", "clone_3", "clone_4"],
+        clone_call=clone_call,
+    )
+    assert clone_call.clone_to_cells_mapping == {
+        "clone_1": {"cell_1", "cell_2", "cell_3"},
+    }
+    assert clone_call.cell_to_clones_mapping == {
+        "cell_1": {"clone_1"},
+        "cell_2": {"clone_1"},
+        "cell_3": {"clone_1"},
+        "cell_4": set(),
+        "cell_5": set(),
+        "cell_6": set(),
+        "cell_7": set(),
+        "cell_8": set(),
+        "cell_9": set(),
+        "cell_10": set(),
+        "cell_11": set(),
+    }
+    assert clone_call.clone_intbc_sets == {
+        "clone_1": {"A", "B"},
+    }
+    assert clone_call.cell_intbc_sets == {
+        "cell_1": {"A", "B"},
+        "cell_2": {"A", "B"},
+        "cell_3": {"A", "B"},
+        "cell_4": set(),
+        "cell_5": set(),
+        "cell_6": set(),
+        "cell_7": set(),
+        "cell_8": set(),
+        "cell_9": set(),
+        "cell_10": set(),
+        "cell_11": set(),
+    }
