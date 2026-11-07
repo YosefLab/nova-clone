@@ -5,7 +5,7 @@ Functions performing data type validation also reside here.
 """
 
 from collections import defaultdict
-from typing import Dict, List, NamedTuple, Set, Tuple, Union
+from typing import Dict, List, NamedTuple, Set, Tuple, TypeVar, Union
 
 from multiset import Multiset
 import pandas as pd
@@ -21,7 +21,8 @@ IntBCType = str
 UMICountType = int
 CloneType = str
 
-Coreset = Union[Set, Multiset]
+_T = TypeVar("_T")
+Coreset = Union[Set[_T], Multiset]
 
 NodeCountsType = Dict[IntBCType, int]  # Nodes of the graph and their weights.
 EdgeCountsType = Dict[
