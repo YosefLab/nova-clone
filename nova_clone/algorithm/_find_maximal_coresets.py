@@ -323,14 +323,14 @@ def duplicate_single_intbcs(maximal_coresets: List[set]) -> List[Multiset]:
         if len(coreset) == 1:
             res.append(Multiset(coreset) + Multiset(coreset))
         else:
-            res.append(Multiset(coreset))
+            res.append(coreset)
     return res
 
 
 def test_duplicate_single_intbcs():
     res = duplicate_single_intbcs([set(["a"]), set(["b", "c"])])
     assert(
-        res == [Multiset(["a", "a"]), Multiset(["b", "c"])]
+        res == [Multiset(["a", "a"]), {"b", "c"}]
     )
 
 
