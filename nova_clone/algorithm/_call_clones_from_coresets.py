@@ -123,7 +123,6 @@ def call_clones_from_coresets(
     clone_intbc_sets = {}
     for clone_idx in tqdm.tqdm(range(num_clones)):
         clone_size = clone_sizes[clone_idx]
-        coreset = coresets[clone_idx]
         kept_intbcs = []
         intbc_counts = sorted(
             clone_intbc_counts[clone_idx].items(), key=lambda x: -x[1]
