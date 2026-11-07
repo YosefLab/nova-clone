@@ -22,7 +22,7 @@ def merge_clones(
     clone_intbc_sets: Dict[CloneType, Set[IntBCType]]
         => we take the union.
     cell_intbc_sets: Dict[CellBCType, Set[IntBCType]]
-        => Stays as-is.
+        => Multiplets contained in exclusively the `clones` have their intBC sets cleared.
     """
     clone_to_cells_mapping = deepcopy(clone_call.clone_to_cells_mapping)
     cell_to_clones_mapping = deepcopy(clone_call.cell_to_clones_mapping)
@@ -43,7 +43,7 @@ def merge_clones(
     for cell in cell_to_clones_mapping:
         cell_clones = cell_to_clones_mapping[cell]
         new_cell_clones = set()
-        if all([clone in cell_clones for clone in clones]) and len(cell_clones) >= 2:
+        if len(cell_clones) >= 2 and all(clone in clones_set for clone in cell_clones):
             # This is a multiplet that mapped only to the merged clones.
             # We unmap it to be safe, i.e. we leave `new_cell_clones` empty.
             pass
@@ -61,6 +61,9 @@ def merge_clones(
         else:
             new_clone_intbc_sets[new_clone_name] = new_clone_intbc_sets[new_clone_name].union(intbcs)
     new_cell_intbc_sets = cell_intbc_sets
+    for cell in new_cell_intbc_sets:
+        if len(new_cell_to_clones_mapping[cell]) == 0:
+            new_cell_intbc_sets[cell] = set()
     return CloneCallType(  # NOTE: We cast to dict to avoid returning defaultdict
         clone_to_cells_mapping=dict(new_clone_to_cells_mapping),
         cell_to_clones_mapping=dict(new_cell_to_clones_mapping),
@@ -107,7 +110,7 @@ def _get_test_clone_call():
             "cell_6": {"C", "D"},
             "cell_7": {"E", "F"},
             "cell_8": {"E", "F"},
-            "cell_9": {"C", "D", "E", "F"},
+            "cell_9": {},
             "cell_10": {"F", "G"},
             "cell_11": set(),
             "cell_12": {"A", "B", "F", "G"},
@@ -136,7 +139,7 @@ def test_merge_clones():
         "cell_6": {"clone_2_3_4"},
         "cell_7": {"clone_2_3_4"},
         "cell_8": {"clone_2_3_4"},
-        "cell_9": {"clone_2_3_4"},
+        "cell_9": set(),
         "cell_10": {"clone_2_3_4"},
         "cell_11": set(),
         "cell_12": {"clone_1", "clone_2_3_4"},
@@ -154,7 +157,7 @@ def test_merge_clones():
         "cell_6": {"C", "D"},
         "cell_7": {"E", "F"},
         "cell_8": {"E", "F"},
-        "cell_9": {"C", "D", "E", "F"},
+        "cell_9": set(),
         "cell_10": {"F", "G"},
         "cell_11": set(),
         "cell_12": {"A", "B", "F", "G"},
