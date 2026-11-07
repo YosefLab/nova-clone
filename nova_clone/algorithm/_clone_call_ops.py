@@ -18,7 +18,7 @@ def merge_clones(
     clone_to_cells_mapping: Dict[CloneType, Set[CellBCType]]
         => we replace the clones by a new key with union of cells.
     cell_to_clones_mapping: Dict[CellBCType, Set[CloneType]]
-        => we collapse the merged clones into one.
+        => we collapse the merged clones into one. To be conservative, multiplets contained in exclusively the `clones` become unmapped cells.
     clone_intbc_sets: Dict[CloneType, Set[IntBCType]]
         => we take the union.
     cell_intbc_sets: Dict[CellBCType, Set[IntBCType]]
@@ -42,11 +42,16 @@ def merge_clones(
     for cell in cell_to_clones_mapping:
         cell_clones = cell_to_clones_mapping[cell]
         new_cell_clones = set()
-        for clone in cell_clones:
-            if clone in clones:
-                new_cell_clones.add(new_clone_name)
-            else:
-                new_cell_clones.add(clone)
+        if all([clone in cell_clones for clone in clones]) and len(cell_clones) >= 2:
+            # This is a multiplet that mapped only to the merged clones.
+            # We unmap it to be safe, i.e. we leave `new_cell_clones` empty.
+            pass
+        else:
+            for clone in cell_clones:
+                if clone in clones:
+                    new_cell_clones.add(new_clone_name)
+                else:
+                    new_cell_clones.add(clone)
         new_cell_to_clones_mapping[cell] = new_cell_clones
     for clone in clone_intbc_sets:
         intbcs = clone_intbc_sets[clone]
