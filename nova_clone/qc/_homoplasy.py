@@ -54,8 +54,8 @@ def qc_homoplastic_intbcs(
             output_str = (
                 f"Homoplastic IntBC {intbc} shared by clones: {clones}. "
                 "We suggest, at your own discretion, either (i) keeping these clones, (ii) merging these clones, "
-                "(iii) discarding these clones. You may merge the clones using the nova_clone.algorithm.merge_clones "
-                "function, or drop clones using the nova_clone.algorithm.drop_clones function."
+                "(iii) dropping these clones. You may merge the clones using the nova_clone.algorithm.merge_clones "
+                "function, or drop clones using the nova_clone.algorithm.drop_clones function ."
             )
             if any([len(clone_intbc_sets[clone]) <= 10 for clone in clones]):
                 output_str += f" Clone intBC sets (for those with <= 10 intBCs):"
