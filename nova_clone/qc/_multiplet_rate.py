@@ -124,7 +124,7 @@ def qc_multiplet_rate_per_clone(
         print(
             f"Clone with the highest multiplet rate: {worst_clone} . Clone size: {denominator[worst_clone]}. "
             f"Number of multiplets shared with other clones:\n{stats_to_show}. "
-            "You may want to discard the clones with high multiplet rate by using nova_clone.algorithm.drop_clones ."
+            "You may want to discard this clone by using nova_clone.algorithm.drop_clones ."
         )
         plt.show()
     plt.close()
