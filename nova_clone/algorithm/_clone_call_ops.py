@@ -84,6 +84,7 @@ def _get_test_clone_call():
             "cell_9": {"clone_2", "clone_3"},
             "cell_10": {"clone_4"},
             "cell_11": set(),
+            "cell_12": {"clone_1", "clone_4"}
         },
         clone_intbc_sets={
             "clone_1": {"A", "B"},
@@ -103,6 +104,7 @@ def _get_test_clone_call():
             "cell_9": {"C", "D", "E", "F"},
             "cell_10": {"F", "G"},
             "cell_11": set(),
+            "cell_12": {"A", "B", "F", "G"},
         }
     )
     return clone_call
@@ -131,6 +133,7 @@ def test_merge_clones():
         "cell_9": {"clone_2_3_4"},
         "cell_10": {"clone_2_3_4"},
         "cell_11": set(),
+        "cell_12": {"clone_1", "clone_2_3_4"},
     }
     assert clone_call.clone_intbc_sets == {
         "clone_1": {"A", "B"},
@@ -148,6 +151,7 @@ def test_merge_clones():
         "cell_9": {"C", "D", "E", "F"},
         "cell_10": {"F", "G"},
         "cell_11": set(),
+        "cell_12": {"A", "B", "F", "G"},
     }
 
 
@@ -161,7 +165,7 @@ def drop_clones(
     clone_to_cells_mapping: Dict[CloneType, Set[CellBCType]]
         => we drop the clones from here.
     cell_to_clones_mapping: Dict[CellBCType, Set[CloneType]]
-        => We drop every cell which maps to *any* of the dropped clones.
+        => We unmap every cell which maps to *any* of the dropped clones.
     clone_intbc_sets: Dict[CloneType, Set[IntBCType]]
         => we drop the clones from here
     cell_intbc_sets: Dict[CellBCType, Set[IntBCType]]
@@ -181,10 +185,10 @@ def drop_clones(
     for cell in cell_to_clones_mapping:
         cell_clones = cell_to_clones_mapping[cell]
         new_cell_clones = set()
-        for clone in cell_clones:
-            if clone not in clones:
-                new_cell_clones.add(clone)
-        new_cell_to_clones_mapping[cell] = new_cell_clones
+        if any([clone in clones for clone in cell_clones]):
+            new_cell_to_clones_mapping[cell] = set()
+        else:
+            new_cell_to_clones_mapping[cell] = cell_clones
     for clone in clone_intbc_sets:
         intbcs = clone_intbc_sets[clone]
         if clone not in clones:
@@ -223,6 +227,7 @@ def test_drop_clones():
         "cell_9": set(),
         "cell_10": set(),
         "cell_11": set(),
+        "cell_12": set(),
     }
     assert clone_call.clone_intbc_sets == {
         "clone_1": {"A", "B"},
@@ -239,4 +244,5 @@ def test_drop_clones():
         "cell_9": set(),
         "cell_10": set(),
         "cell_11": set(),
+        "cell_12": set(),
     }
