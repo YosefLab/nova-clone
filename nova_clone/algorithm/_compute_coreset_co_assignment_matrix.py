@@ -48,7 +48,7 @@ class ComputeCoresetCoAssignmentMatrixReturnType(NamedTuple):
 
 def compute_coreset_co_assignment_matrix(
     cellbc_intbc_sets: Dict[CellBCType, Set[IntBCType]],
-    coresets: List[Set[IntBCType]],
+    coresets: List[Coreset[IntBCType]],
     min_overlap_for_assigning_cellbc: int,
 ) -> ComputeCoresetCoAssignmentMatrixReturnType:
     """

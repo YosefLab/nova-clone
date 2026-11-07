@@ -5,8 +5,9 @@ Functions performing data type validation also reside here.
 """
 
 from collections import defaultdict
-from typing import Dict, List, NamedTuple, Set, Tuple
+from typing import Dict, List, NamedTuple, Set, Tuple, Union
 
+from multiset import Multiset
 import pandas as pd
 from pandas.api.types import is_signed_integer_dtype, is_string_dtype
 
@@ -19,6 +20,8 @@ CellBCType = str
 IntBCType = str
 UMICountType = int
 CloneType = str
+
+Coreset = Union[Set, Multiset]
 
 NodeCountsType = Dict[IntBCType, int]  # Nodes of the graph and their weights.
 EdgeCountsType = Dict[

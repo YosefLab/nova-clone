@@ -36,12 +36,12 @@ class MakeCoresetsDisjointReturnType(NamedTuple):
         total_time: Total time taken.
     """
 
-    coresets: List[Set[IntBCType]]
+    coresets: List[Coreset[IntBCType]]
     total_time: float
 
 
 def make_coresets_disjoint(
-    coresets: List[Set[IntBCType]],
+    coresets: List[Coreset[IntBCType]],
 ) -> MakeCoresetsDisjointReturnType:
     """
     Elements that appear in more than one coreset are removed from all the

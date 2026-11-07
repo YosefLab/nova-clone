@@ -54,7 +54,7 @@ class CallClonesFromCoresetsReturnType(NamedTuple):
 def call_clones_from_coresets(
     intbc_table_per_sample: Dict[SampleNameType, IntBCTableType],
     min_intbc_umi_count: int,
-    coresets: List[Set[str]],
+    coresets: List[Coreset[str]],
     min_overlap_for_assigning_cellbc: int,
     min_intbc_counts_for_adding_intbc_to_clone_intbc_set: int,
     min_intbc_fraction_for_adding_to_clone_intbc_set: float,

@@ -49,7 +49,7 @@ class ComputeCellBCvsCoresetOverlapMatrixReturnType(NamedTuple):
 
 def compute_cellbc_vs_coreset_overlap_matrix(
     cellbc_intbc_sets: Dict[IntBCType, Set[IntBCType]],
-    coresets: List[Set[IntBCType]],
+    coresets: List[Coreset[IntBCType]],
 ) -> ComputeCellBCvsCoresetOverlapMatrixReturnType:
     """
     Pandas dataframe of cell vs coreset.
