@@ -197,12 +197,6 @@ def clone_calling_algorithm(
             Subclones tend to be smaller than the parent clone, so it is a good
             idea to set this lower than the original
             min_cells_assigned.
-        recover_single_intbc_clones: If `True`, then we also recover clones defined
-            by single intBCs. Only set this to `True` if single-intBC clones
-            are an important part of your data. Setting this is a double-edged
-            sword: while you will recover single-intBC clones, technical artifacts
-            are more likely, since clones have weaker statistical support. Make sure
-            to closely analyze the post-QC plots to ensure the clone call is good.
 
     Returns:
         A `results` NamedTuple of type CloneCallingAlgorithmReturnType, which contains
