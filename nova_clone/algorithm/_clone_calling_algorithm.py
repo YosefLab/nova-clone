@@ -1235,7 +1235,6 @@ def test_recursive_clone_calling_algorithm_on_real_data():
                 "notebooks/test_data/3B_clone_11_intBC_table_per_sample.csv"
             )
         },
-        min_intbc_fraction=0.01,
         recursive=True,
     )
 
