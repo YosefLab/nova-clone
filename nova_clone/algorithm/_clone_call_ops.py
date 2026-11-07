@@ -32,6 +32,7 @@ def merge_clones(
     new_cell_to_clones_mapping = {}
     new_clone_intbc_sets = defaultdict(set)
     new_cell_intbc_sets = {}
+    clones_set = set(clones)
     for clone in clone_to_cells_mapping:
         if clone not in clones:
             new_clone_to_cells_mapping[clone] = clone_to_cells_mapping[clone]
@@ -48,14 +49,14 @@ def merge_clones(
             pass
         else:
             for clone in cell_clones:
-                if clone in clones:
+                if clone in clones_set:
                     new_cell_clones.add(new_clone_name)
                 else:
                     new_cell_clones.add(clone)
         new_cell_to_clones_mapping[cell] = new_cell_clones
     for clone in clone_intbc_sets:
         intbcs = clone_intbc_sets[clone]
-        if clone not in clones:
+        if clone not in clones_set:
             new_clone_intbc_sets[clone] = intbcs
         else:
             new_clone_intbc_sets[new_clone_name] = new_clone_intbc_sets[new_clone_name].union(intbcs)
@@ -184,13 +185,14 @@ def drop_clones(
     new_cell_to_clones_mapping = {}
     new_clone_intbc_sets = defaultdict(set)
     new_cell_intbc_sets = {}
+    clones_set = set(clones)
     for clone in clone_to_cells_mapping:
         if clone not in clones:
             new_clone_to_cells_mapping[clone] = clone_to_cells_mapping[clone]
     for cell in cell_to_clones_mapping:
         cell_clones = cell_to_clones_mapping[cell]
         new_cell_clones = set()
-        if any([clone in clones for clone in cell_clones]):
+        if any([clone in clones_set for clone in cell_clones]):
             new_cell_to_clones_mapping[cell] = set()
         else:
             new_cell_to_clones_mapping[cell] = cell_clones
