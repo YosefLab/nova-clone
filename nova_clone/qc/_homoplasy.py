@@ -58,7 +58,7 @@ def qc_homoplastic_intbcs(
                 "function, or drop clones using the nova_clone.algorithm.drop_clones function."
             )
             if any([len(clone_intbc_sets[clone]) <= 10 for clone in clones]):
-                output_str += f" clone intBC sets (for those with <= 10 intBCs):"
+                output_str += f" Clone intBC sets (for those with <= 10 intBCs):"
                 for clone in clones:
                     if len(clone_intbc_sets[clone]) <= 10:
                         output_str += f"\n{clone}: {clone_intbc_sets[clone]}"
