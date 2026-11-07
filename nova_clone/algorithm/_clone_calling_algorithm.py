@@ -260,14 +260,14 @@ def test_remove_empty_clones():
 def clone_calling_algorithm(
     ##### Public parameters (defaults should work well on most datasets) #####
     # Phase 1 parameters
-    intbc_table_per_sample: Dict[SampleNameType, IntBCTableType],
+    intbc_table_per_sample: Dict[str, pd.DataFrame],
     min_intbc_umi_count: int = 10,
     custom_intbc_filtering_function: Callable[[str], bool] = lambda intbc: False,
     min_intbc_cellbc_count: int = 10,
     edit_distance_cutoff: int = 4,
     # Phase 2 parameters
-    min_cells_assigned: int = 30,
-    min_intbc_fraction: float = 0.20,  # (please set to 0.0 when using `recursive=True` mode.)
+    min_cells_assigned: int = 10,
+    min_intbc_fraction: float = 0.0,
     edit_distance_cutoff_phase_2: Optional[int] = None, # If `None`, defaults to `edit_distance_cutoff` value
     # Recursive step parameters
     recursive: bool = False,
@@ -327,9 +327,9 @@ def clone_calling_algorithm(
         min_intbc_fraction:
             Following up on the above argument, we can also specify the
             minimum percentage of cells in the clone containing the intBC
-            needed to include the intBC in the clone's intBC set. A typical
-            processing pipeline sets this to 20%, but this may lose a large
-            number of intBCs.
+            needed to include the intBC in the clone's intBC set. We set this
+            to 0 by default to recover the intBC tail too. Set this to e.g.
+            20% if you only wish to retain high-frequency intBCs.
        edit_distance_cutoff_phase_2: See description of parameter edit_distance_cutoff.
             If `None` (default) this is set equal to edit_distance_cutoff. This should work
             well in most cases. Reasons for setting this value to something different than
