@@ -53,7 +53,7 @@ class FindMaximalCoresetsReturnType(NamedTuple):
         total_time: Total time taken.
     """
 
-    maximal_coresets: List[Multiset[str]]
+    maximal_coresets: List[Set[str]]
     total_time: float
 
 
