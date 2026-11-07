@@ -284,7 +284,7 @@ def clone_calling_algorithm(
     _coreset_dealiasing_step__min_overlap_for_assigning_cellbc: int = 2, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
     _coreset_dealiasing_step__co_occurrence_cutoff: float = 0.5, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
     _coreset_disjointing_step__make_disjoint: bool = True, # Private parameter, not exposed to the user. Used for testing.
-    _final_cell_assignment_step__min_overlap_for_assigning_cellbc: int = 2, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
+    _final_cell_assignment_step__min_overlap_for_assigning_cellbc: int = 1, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
     _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set: Optional[int] = None, # Private parameter, not exposed to the user. Used for testing.
 ) -> CloneCallingAlgorithmReturnType:
     """
@@ -1385,5 +1385,82 @@ def test_clone_calling_algorithm_single_intBC_clones_trivial():
         clone_call=clone_call,
         expected_clones=[
             [f"sample1_cellBC_{i}" for i in range(ncells_per_clone)],
+        ],
+    )
+
+
+def test_clone_calling_algorithm_single_intBC_clones__border_case():
+    f"""
+    The pruned intBC graph has:
+    ["a", "b"]
+    ["a", "c"]
+    ["d"]
+    After making the coresets disjoint, this leads to coresets ["b"], ["c"], ["d"];
+    - With a _final_cell_assignment_step__min_overlap_for_assigning_cellbc=1,
+    the three clones remain, all doublets correctly identified.
+    - With a _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
+    this should cause the ["b"] and ["c"] coresets to get no cells mapped (and thus drop off),
+    versus ["d"] does get them since it's a single-intBC clone. However, ["d"] gets `cellBC_doublet2`
+    mapped since it only overlaps in 1 intBC with the pruned coresets ["b"], ["c"].
+    """
+    ncells_per_clone = 100
+    intbc_table = pd.DataFrame(
+        data=[[f"cellBC_{i}", "AAA", 40] for i in range(ncells_per_clone)]
+        + [[f"cellBC_{i}", "BBB", 40] for i in range(ncells_per_clone)]
+        + [
+            [f"cellBC_{i}", "AAA", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "CCC", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "DDD", 40]
+            for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)
+        ]
+        + [
+            ["cellBC_doublet", "AAA", 40],
+            ["cellBC_doublet", "BBB", 40],
+            ["cellBC_doublet", "CCC", 40],
+        ] + [
+            ["cellBC_doublet2", "AAA", 40],
+            ["cellBC_doublet2", "BBB", 40],
+            ["cellBC_doublet2", "CCC", 40],
+            ["cellBC_doublet2", "DDD", 40],
+        ] + [
+            ["empty_droplet", "AAA", 1],
+            ["empty_droplet", "BBB", 1],
+            ["empty_droplet", "GGG", 1],
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call_1 = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call_1,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone)],
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone, 2 * ncells_per_clone)],
+            [f"sample1_cellBC_{i}" for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)],
+        ],
+    )
+
+    clone_call_2 = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call_2,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)] + ["sample1_cellBC_doublet2"],
         ],
     )
