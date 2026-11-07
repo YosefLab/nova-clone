@@ -1037,7 +1037,6 @@ def test_recursive_clone_calling_algorithm_mini():
         min_intbc_cellbc_count=1,
         edit_distance_cutoff=0,
         min_cells_assigned=1,
-        min_intbc_fraction=-0.1,
         recursive=True,
         recursive_min_cells_assigned=2,
     )
