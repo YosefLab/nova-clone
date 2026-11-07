@@ -211,7 +211,7 @@ def test_qc_compare_clone_calls():
         _coreset_dealiasing_step__co_occurrence_cutoff=1.1,
         min_cells_assigned=1,
         _coreset_disjointing_step__make_disjoint=True,
-        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
+        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=1,
         _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
         min_intbc_fraction=-0.1,
     ).clone_call

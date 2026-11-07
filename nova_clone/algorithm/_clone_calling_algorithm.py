@@ -961,7 +961,7 @@ def test_clone_calling_algorithm_mini():
         _coreset_dealiasing_step__co_occurrence_cutoff=1.1,
         min_cells_assigned=1,
         _coreset_disjointing_step__make_disjoint=True,
-        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
+        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=1,
         _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
         min_intbc_fraction=-0.1,
         # Collapse 1-edit neighbors of an already-kept intBC (drops FFH vs FFF).
@@ -1060,7 +1060,7 @@ def test_recursive_clone_calling_algorithm_mini():
         _coreset_dealiasing_step__co_occurrence_cutoff=1.1,
         min_cells_assigned=1,
         _coreset_disjointing_step__make_disjoint=True,
-        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
+        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=1,
         _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
         min_intbc_fraction=-0.1,
         recursive=True,
