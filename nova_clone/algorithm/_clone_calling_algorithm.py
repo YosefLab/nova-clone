@@ -481,6 +481,11 @@ def clone_calling_algorithm(
         # We set the min_coreset_size to size to 1.
         # This retains isolated vertices in the starting coreset family.
         _preliminary_coreset_building_step__min_coreset_size = 1
+        # Also, if the user is running in single-intBC mode, the homoplasy pruning step should be
+        # skipped, because it discards single-intBC clones. The user has acknowledged
+        # the limitations of recovering clones with weaker statistical support, and will
+        # check the post-QC plots closely.
+        _homoplastic_pruning_step__p_max_cutoff = -1
 
 
     st = time.time()
@@ -1259,4 +1264,126 @@ def test_clone_calling_algorithm_doublet():
     )
     assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet"] == set(
         ["clone_0", "clone_1"]
+    )
+
+
+def test_clone_calling_algorithm_single_intBC_clones():
+    """
+    NovaClone can recover single intBC clones too, by running with
+    `recover_single_intbc_clones=True`.
+    """
+    ncells_per_clone = 100
+    intbc_table = pd.DataFrame(
+        data=[[f"cellBC_{i}", "AAA", 40] for i in range(ncells_per_clone)]
+        + [[f"cellBC_{i}", "BBB", 40] for i in range(ncells_per_clone)]
+        + [[f"cellBC_{i}", "CCC", 40] for i in range(ncells_per_clone)]
+        + [
+            [f"cellBC_{i}", "DDD", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "EEE", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "FFF", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ] + [
+            [f"cellBC_{i}", "GGG", 40]
+            for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)
+        ] + [
+            [f"cellBC_{i}", "HHH", 40]
+            for i in range(3 * ncells_per_clone, 4 * ncells_per_clone)
+        ]
+        + [
+            ["cellBC_doublet", "AAA", 40],
+            ["cellBC_doublet", "BBB", 40],
+            ["cellBC_doublet", "CCC", 40],
+            ["cellBC_doublet", "DDD", 40],
+            ["cellBC_doublet", "EEE", 40],
+            ["cellBC_doublet", "FFF", 40],
+        ] + [
+            ["cellBC_doublet2", "AAA", 40],
+            ["cellBC_doublet2", "BBB", 40],
+            ["cellBC_doublet2", "CCC", 40],
+            ["cellBC_doublet2", "GGG", 40],
+        ] + [
+            ["cellBC_doublet3", "GGG", 40],
+            ["cellBC_doublet3", "HHH", 40],
+        ] + [
+            ["cellBC_doublet4", "AAA", 40],
+            ["cellBC_doublet4", "BBB", 40],
+            ["cellBC_doublet4", "GGG", 40],
+            ["cellBC_doublet4", "HHH", 40],
+        ] + [
+            ["empty_droplet", "AAA", 1],
+            ["empty_droplet", "BBB", 1],
+            ["empty_droplet", "GGG", 1],
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone)],
+            [
+                f"sample1_cellBC_{i}"
+                for i in range(ncells_per_clone, 2 * ncells_per_clone)
+            ],
+            [
+                f"sample1_cellBC_{i}"
+                for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)
+            ],
+            [
+                f"sample1_cellBC_{i}"
+                for i in range(3 * ncells_per_clone, 4 * ncells_per_clone)
+            ],
+        ],
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet"] == set(
+        ["clone_0", "clone_1"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet2"] == set(
+        ["clone_0", "clone_2"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet3"] == set(
+        ["clone_2", "clone_3"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet4"] == set(
+        ["clone_0", "clone_2", "clone_3"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_empty_droplet"] == set(
+        []
+    )
+
+
+def test_clone_calling_algorithm_single_intBC_clones_trivial():
+    """
+    NovaClone can recover single intBC clones too, by running with
+    `recover_single_intbc_clones=True`. Just one clone with one intBC.
+    """
+    ncells_per_clone = 100
+    intbc_table = pd.DataFrame(
+        data=[[f"cellBC_{i}", "AAA", 40] for i in range(ncells_per_clone)],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone)],
+        ],
     )
