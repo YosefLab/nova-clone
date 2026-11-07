@@ -775,7 +775,7 @@ def clone_calling_algorithm(
                 min_intbc_cellbc_count=min_intbc_cellbc_count,  # OK? Can consider removing this filter at this point?
                 edit_distance_cutoff=edit_distance_cutoff,  # Doesn't actually matter since there are no sequencing errors at this point
                 _sequencing_error_pruning_step__co_occurrence_cutoff=_sequencing_error_pruning_step__co_occurrence_cutoff,  # Doesn't actually matter since there are no sequencing errors at this point
-                _homoplastic_pruning_step__p_max_cutoff=_homoplastic_pruning_step__p_max_cutoff,  # OK? I can consider removing it too.
+                _homoplastic_pruning_step__p_max_cutoff=-1,  # Technically not needed since recover_single_intbc_clones will force it to -1 anyway.
                 _reliable_edges_step__ratio_cutoff=_reliable_edges_step__ratio_cutoff,  # OK (still need it)
                 _preliminary_coreset_building_step__min_coreset_size=1,  # Since there is no homoplasy eny more, can set it to 1.
                 _preliminary_coreset_building_step__min_overlap_for_merging_coresets=1,  # Basically, we are just looking for connected components at this point.
@@ -1047,24 +1047,11 @@ def test_recursive_clone_calling_algorithm_mini():
 
     clone_call_namedtuple = clone_calling_algorithm(
         intbc_table_per_sample={"sample1": intbc_table},
-        min_intbc_umi_count=10,
-        custom_intbc_filtering_function=lambda intbc: False,
         min_intbc_cellbc_count=1,
         edit_distance_cutoff=0,
-        _sequencing_error_pruning_step__co_occurrence_cutoff=1.1,
-        _homoplastic_pruning_step__p_max_cutoff=-0.1,
-        _reliable_edges_step__ratio_cutoff=0.5,
-        _preliminary_coreset_building_step__min_coreset_size=2,
-        _preliminary_coreset_building_step__min_overlap_for_merging_coresets=2,
-        _coreset_dealiasing_step__min_overlap_for_assigning_cellbc=2,
-        _coreset_dealiasing_step__co_occurrence_cutoff=1.1,
         min_cells_assigned=1,
-        _coreset_disjointing_step__make_disjoint=True,
-        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=1,
-        _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
         min_intbc_fraction=-0.1,
         recursive=True,
-        recursive_min_fraction_uniquely_mapped_cells_to_recurse=0.8,
         recursive_min_cells_assigned=2,
     )
     clone_call = clone_call_namedtuple.clone_call
