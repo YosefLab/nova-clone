@@ -8,6 +8,7 @@ import logging
 import sys
 import time
 from typing import *
+from multiset import Multiset
 
 import numpy as np
 import tqdm
@@ -64,7 +65,7 @@ def compute_coreset_co_assignment_matrix(
     for cell, cell_intbc_set in tqdm.tqdm(cellbc_intbc_sets.items()):
         coresets_assigned = []
         for coreset_idx, coreset in enumerate(coresets):
-            overlap = len(cell_intbc_set.intersection(coreset))
+            overlap = len([intbc for intbc in coreset if intbc in cell_intbc_set])  # Handles multiset coresets
             if overlap >= min_overlap_for_assigning_cellbc:
                 coresets_assigned.append(coreset_idx)
         for coreset_idx_1 in coresets_assigned:
@@ -135,6 +136,35 @@ def test_compute_coreset_co_assignment_matrix():
             [
                 [3, 2],
                 [2, 3],
+            ]
+        ),
+    )
+
+
+def test_compute_coreset_co_assignment_matrix_multisets():
+    cellbc_intbc_sets = {
+        "cell_1": {"1", "2"},
+        "cell_2": {"1", "3"},
+        "cell_3": {"1", "2", "3"},
+        "cell_4": {"1", "2", "4"},
+    }
+    coresets = [
+        {"1", "2"},
+        {"1", "3"},
+        Multiset(["4"]) + Multiset(["4"]),
+    ]
+    mat = compute_coreset_co_assignment_matrix(
+        cellbc_intbc_sets=cellbc_intbc_sets,
+        coresets=coresets,
+        min_overlap_for_assigning_cellbc=2,
+    ).coreset_co_assignment_matrix
+    np.testing.assert_equal(
+        mat,
+        np.array(
+            [
+                [3, 1, 1],
+                [1, 2, 0],
+                [1, 0, 1],
             ]
         ),
     )
