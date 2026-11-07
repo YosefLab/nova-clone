@@ -1178,7 +1178,6 @@ def test_recursive_clone_calling_algorithm_larger():
     clone_call_namedtuple = clone_calling_algorithm(
         intbc_table_per_sample={"sample1": intbc_table},
         edit_distance_cutoff=0,
-        min_intbc_fraction=-0.1,
         recursive=True,
     )
     clone_call = clone_call_namedtuple.clone_call
