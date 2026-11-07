@@ -169,7 +169,7 @@ def drop_clones(
     clone_intbc_sets: Dict[CloneType, Set[IntBCType]]
         => we drop the clones from here
     cell_intbc_sets: Dict[CellBCType, Set[IntBCType]]
-        => we drop the dropped cells from here.
+        => we clear the intBC set of every cell that we unmapped
     """
     clone_to_cells_mapping = clone_call.clone_to_cells_mapping
     cell_to_clones_mapping = clone_call.cell_to_clones_mapping
