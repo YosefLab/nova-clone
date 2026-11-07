@@ -51,7 +51,12 @@ def qc_homoplastic_intbcs(
         if len(res) == 0:
             print(f"No homoplastic intBCs found amongst the called clones.")
         for intbc, clones in res.items():
-            output_str = f"Homoplastic IntBC {intbc} shared by clones: {clones}."
+            output_str = f"Homoplastic IntBC {intbc} shared by clones: {clones}. We suggest, at your own discretion, either (i) keeping these clones, (ii) merging these clones, (iii) discarding these clones."
+            if any([len(clone_intbc_sets[clone]) <= 10 for clone in clones]):
+                output_str += f" clone intBC sets (for those with <= 10 intBCs):"
+                for clone in clones:
+                    if len(clone_intbc_sets[clone]) <= 10:
+                        output_str += f"\n{clone}: {clone_intbc_sets[clone]}"
             output_str += f"\n\tAbundances: "
             for clone in clones:
                 output_str += f"\n\t\t{clone}: {100 * abundances_dict[intbc][clone]:.0f}% = {numerator_dict[intbc][clone]} / {denominator_dict[intbc][clone]}"
