@@ -24,10 +24,10 @@ def merge_clones(
     cell_intbc_sets: Dict[CellBCType, Set[IntBCType]]
         => Stays as-is.
     """
-    clone_to_cells_mapping = clone_call.clone_to_cells_mapping
-    cell_to_clones_mapping = clone_call.cell_to_clones_mapping
-    clone_intbc_sets = clone_call.clone_intbc_sets
-    cell_intbc_sets = clone_call.cell_intbc_sets
+    clone_to_cells_mapping = deepcopy(clone_call.clone_to_cells_mapping)
+    cell_to_clones_mapping = deepcopy(clone_call.cell_to_clones_mapping)
+    clone_intbc_sets = deepcopy(clone_call.clone_intbc_sets)
+    cell_intbc_sets = deepcopy(clone_call.cell_intbc_sets)
     new_clone_to_cells_mapping = defaultdict(set)
     new_cell_to_clones_mapping = {}
     new_clone_intbc_sets = defaultdict(set)
@@ -59,7 +59,7 @@ def merge_clones(
             new_clone_intbc_sets[clone] = intbcs
         else:
             new_clone_intbc_sets[new_clone_name] = new_clone_intbc_sets[new_clone_name].union(intbcs)
-    new_cell_intbc_sets = deepcopy(cell_intbc_sets)
+    new_cell_intbc_sets = cell_intbc_sets
     return CloneCallType(
         clone_to_cells_mapping=new_clone_to_cells_mapping,
         cell_to_clones_mapping=new_cell_to_clones_mapping,
@@ -176,10 +176,10 @@ def drop_clones(
     cell_intbc_sets: Dict[CellBCType, Set[IntBCType]]
         => we clear the intBC set of every cell that we unmapped
     """
-    clone_to_cells_mapping = clone_call.clone_to_cells_mapping
-    cell_to_clones_mapping = clone_call.cell_to_clones_mapping
-    clone_intbc_sets = clone_call.clone_intbc_sets
-    cell_intbc_sets = clone_call.cell_intbc_sets
+    clone_to_cells_mapping = deepcopy(clone_call.clone_to_cells_mapping)
+    cell_to_clones_mapping = deepcopy(clone_call.cell_to_clones_mapping)
+    clone_intbc_sets = deepcopy(clone_call.clone_intbc_sets)
+    cell_intbc_sets = deepcopy(clone_call.cell_intbc_sets)
     new_clone_to_cells_mapping = defaultdict(set)
     new_cell_to_clones_mapping = {}
     new_clone_intbc_sets = defaultdict(set)
