@@ -775,6 +775,7 @@ def clone_calling_algorithm(
                 _preliminary_coreset_building_step__min_coreset_size=1,  # Since there is no homoplasy eny more, can set it to 1.
                 _preliminary_coreset_building_step__min_overlap_for_merging_coresets=1,  # Basically, we are just looking for connected components at this point.
                 _coreset_dealiasing_step__min_overlap_for_assigning_cellbc=1,  # Again, there is no homoplasy, so we can set it to 1.
+                recover_single_intbc_clones=True,  # Since we allow for single-intBC clones.
                 _coreset_dealiasing_step__co_occurrence_cutoff=_coreset_dealiasing_step__co_occurrence_cutoff,  # Technically, there should be no aliasing since that's how we found the progenitor_intbc_set.
                 min_cells_assigned=recursive_min_cells_assigned,  # OK - we allow for a smaller value to recover smaller subclones.
                 _coreset_disjointing_step__make_disjoint=_coreset_disjointing_step__make_disjoint,  # Doesn't matter - there should be no homoplasy at this point.
