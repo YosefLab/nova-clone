@@ -60,11 +60,11 @@ def merge_clones(
         else:
             new_clone_intbc_sets[new_clone_name] = new_clone_intbc_sets[new_clone_name].union(intbcs)
     new_cell_intbc_sets = cell_intbc_sets
-    return CloneCallType(
-        clone_to_cells_mapping=new_clone_to_cells_mapping,
-        cell_to_clones_mapping=new_cell_to_clones_mapping,
-        clone_intbc_sets=new_clone_intbc_sets,
-        cell_intbc_sets=new_cell_intbc_sets,
+    return CloneCallType(  # NOTE: We cast to dict to avoid returning defaultdict
+        clone_to_cells_mapping=dict(new_clone_to_cells_mapping),
+        cell_to_clones_mapping=dict(new_cell_to_clones_mapping),
+        clone_intbc_sets=dict(new_clone_intbc_sets),
+        cell_intbc_sets=dict(new_cell_intbc_sets),
     )
 
 
@@ -203,11 +203,11 @@ def drop_clones(
             new_cell_intbc_sets[cell] = set()
         else:
             new_cell_intbc_sets[cell] = cell_intbc_sets[cell]
-    return CloneCallType(
-        clone_to_cells_mapping=new_clone_to_cells_mapping,
-        cell_to_clones_mapping=new_cell_to_clones_mapping,
-        clone_intbc_sets=new_clone_intbc_sets,
-        cell_intbc_sets=new_cell_intbc_sets,
+    return CloneCallType(  # NOTE: We cast to dict to avoid returning defaultdict
+        clone_to_cells_mapping=dict(new_clone_to_cells_mapping),
+        cell_to_clones_mapping=dict(new_cell_to_clones_mapping),
+        clone_intbc_sets=dict(new_clone_intbc_sets),
+        cell_intbc_sets=dict(new_cell_intbc_sets),
     )
 
 
