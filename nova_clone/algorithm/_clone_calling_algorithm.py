@@ -273,6 +273,8 @@ def clone_calling_algorithm(
     recursive: bool = False,
     recursive_min_fraction_uniquely_mapped_cells_to_recurse: float = 0.7,
     recursive_min_cells_assigned: int = 10,
+    # Single-intBC clone recovery
+    recover_single_intBC_clones: bool = False,
     ##### Private parameters (we do not expect the user to ever have to change these) #####
     _sequencing_error_pruning_step__co_occurrence_cutoff: float = 0.5,
     _homoplastic_pruning_step__p_max_cutoff: float = 0.5,
@@ -361,6 +363,15 @@ def clone_calling_algorithm(
             Subclones tend to be smaller than the parent clone, so it is a good
             idea to set this lower than the original
             min_cells_assigned.
+        recover_single_intBC_clones: If `True`, single-intBC clones will also be
+            recovered. Use this if your data contains single-intBC clones. There
+            is an inherent tradeoff in trying to recover single-intBC clones: since
+            these clones have weaker statistical support, unless you are certain
+            that your data has negligible levels of homoplasy, you might end up
+            accidentally overmerging clones. If evolving tracer marks are
+            available, we recommend using these to confirm that the single-intBC
+            clones are high quality, and if there is overmerging we recommend
+            splitting into different clones based on evolving lineage marks.
         _sequencing_error_pruning_step__co_occurrence_cutoff: This establishes
             how frequently intBC `x` needs to co-occur with intBC `y` having a
             similar sequence (as determined by the edit_distance_cutoff above)
