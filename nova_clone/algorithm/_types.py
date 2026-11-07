@@ -138,3 +138,13 @@ def test__prune_nodes_from_graph():
         nodes_to_prune=["1"],
     )
     assert pruned_graph == ({"2": {}, "3": {}}, {"2": 11, "3": 12})
+
+
+def sanity_check_clone_call(clone_call):
+    for cell in clone_call.clone_to_cells_mapping:
+        if len(clone_call.clone_to_cells_mapping[cell]) == 0:
+            if len(clone_call.cell_intbc_sets[cell]) != 0:
+                raise ValueError(
+                    "An unmapped cellBC has a non-empty intBC set; this is a "
+                    "developer error."
+                )

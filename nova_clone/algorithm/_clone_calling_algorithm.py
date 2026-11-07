@@ -253,16 +253,6 @@ def test_remove_empty_clones():
     assert out.cell_to_clones_mapping["c4"] == set()
 
 
-def _sanity_check_clone_call(clone_call):
-    for cell in clone_call.clone_to_cells_mapping:
-        if len(clone_call.clone_to_cells_mapping[cell]) == 0:
-            if len(clone_call.cell_intbc_sets[cell]) != 0:
-                raise ValueError(
-                    "An unmapped cellBC has a non-empty intBC set; this is a "
-                    "developer error."
-                )
-
-
 def clone_calling_algorithm(
     ##### Public parameters (defaults should work well on most datasets) #####
     # Phase 1 parameters
@@ -872,7 +862,7 @@ def clone_calling_algorithm(
         recursive_clone_call = None
         recursive_clone_call_integration_hierarchy = None
 
-    _sanity_check_clone_call(clone_call)
+    sanity_check_clone_call(clone_call)
 
     total_time = time.time() - st
     res = CloneCallingAlgorithmReturnType(

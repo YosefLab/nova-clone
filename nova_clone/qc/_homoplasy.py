@@ -51,7 +51,12 @@ def qc_homoplastic_intbcs(
         if len(res) == 0:
             print(f"No homoplastic intBCs found amongst the called clones.")
         for intbc, clones in res.items():
-            output_str = f"Homoplastic IntBC {intbc} shared by clones: {clones}. We suggest, at your own discretion, either (i) keeping these clones, (ii) merging these clones, (iii) discarding these clones."
+            output_str = (
+                f"Homoplastic IntBC {intbc} shared by clones: {clones}. "
+                "We suggest, at your own discretion, either (i) keeping these clones, (ii) merging these clones, "
+                "(iii) discarding these clones. You may merge the clones using the nova_clone.algorithm.merge_clones "
+                "function, or drop clones using the nova_clone.algorithm.drop_clones function."
+            )
             if any([len(clone_intbc_sets[clone]) <= 10 for clone in clones]):
                 output_str += f" clone intBC sets (for those with <= 10 intBCs):"
                 for clone in clones:
