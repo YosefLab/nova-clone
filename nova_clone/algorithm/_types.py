@@ -5,8 +5,9 @@ Functions performing data type validation also reside here.
 """
 
 from collections import defaultdict
-from typing import Dict, List, NamedTuple, Set, Tuple
+from typing import Dict, List, NamedTuple, Set, Tuple, TypeVar, Union
 
+from multiset import Multiset
 import pandas as pd
 from pandas.api.types import is_signed_integer_dtype, is_string_dtype
 
@@ -19,6 +20,9 @@ CellBCType = str
 IntBCType = str
 UMICountType = int
 CloneType = str
+
+_T = TypeVar("_T")
+Coreset = Union[Set[_T], Multiset]
 
 NodeCountsType = Dict[IntBCType, int]  # Nodes of the graph and their weights.
 EdgeCountsType = Dict[
@@ -134,3 +138,13 @@ def test__prune_nodes_from_graph():
         nodes_to_prune=["1"],
     )
     assert pruned_graph == ({"2": {}, "3": {}}, {"2": 11, "3": 12})
+
+
+def sanity_check_clone_call(clone_call):
+    for cell in clone_call.clone_to_cells_mapping:
+        if len(clone_call.clone_to_cells_mapping[cell]) == 0:
+            if len(clone_call.cell_intbc_sets[cell]) != 0:
+                raise ValueError(
+                    "An unmapped cellBC has a non-empty intBC set; this is a "
+                    "developer error."
+                )

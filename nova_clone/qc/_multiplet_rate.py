@@ -76,6 +76,8 @@ def qc_multiplet_rate_per_clone(
     """
     numerator = defaultdict(int)
     denominator = defaultdict(int)
+    all_clones = set([clone for clone_set in cell_to_clones_mapping.values() for clone in clone_set])
+    multiplets_per_clone = {clone: defaultdict(int) for clone in all_clones}
     for cellbc, clones in cell_to_clones_mapping.items():
         clones = list(clones)
         if len(clones) == 1:
@@ -86,6 +88,10 @@ def qc_multiplet_rate_per_clone(
             for clone in clones:
                 denominator[clone] += 1
                 numerator[clone] += 1
+                for other_clone in clones:
+                    if clone < other_clone:
+                        multiplets_per_clone[clone][other_clone] += 1
+                        multiplets_per_clone[other_clone][clone] += 1
     multiplet_rate_per_clone = {
         clone: numerator[clone] / denominator[clone] for clone in denominator
     }
@@ -109,6 +115,17 @@ def qc_multiplet_rate_per_clone(
         print(f"******************************")
         print(f"* Per-Clone Doublet Analysis *")
         print(f"******************************")
+        # Show the worse offender
+        worst_clone = max([(multiplet_rate_per_clone[clone], clone) for clone in multiplet_rate_per_clone])[1]
+        stats_to_show = "{"
+        for other_clone, n_multiplets in multiplets_per_clone[worst_clone].items():
+            stats_to_show += f"{other_clone} (size {denominator[other_clone]}): {n_multiplets}, "
+        stats_to_show += "}"
+        print(
+            f"Clone with the highest multiplet rate: {worst_clone} . Clone size: {denominator[worst_clone]}. "
+            f"Number of multiplets shared with other clones:\n{stats_to_show}. "
+            "You may want to drop this clone by using nova_clone.algorithm.drop_clones ."
+        )
         plt.show()
     plt.close()
 

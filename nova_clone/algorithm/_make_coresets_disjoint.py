@@ -8,6 +8,8 @@ import logging
 import sys
 import time
 
+from multiset import Multiset
+
 from ._types import *
 
 
@@ -34,12 +36,12 @@ class MakeCoresetsDisjointReturnType(NamedTuple):
         total_time: Total time taken.
     """
 
-    coresets: List[Set[IntBCType]]
+    coresets: List[Coreset[IntBCType]]
     total_time: float
 
 
 def make_coresets_disjoint(
-    coresets: List[Set[IntBCType]],
+    coresets: List[Coreset[IntBCType]],
 ) -> MakeCoresetsDisjointReturnType:
     """
     Elements that appear in more than one coreset are removed from all the
@@ -50,12 +52,12 @@ def make_coresets_disjoint(
     logger.info("Going to make_coresets_disjoint ...")
     intbc_counts = defaultdict(int)
     for coreset in coresets:
-        for intbc in coreset:
+        for intbc in set(coreset):  # Use set(coreset) to handle multiset coresets, otherwise single-intBC coresets will get killed by `make_coresets_disjoint`.
             intbc_counts[intbc] += 1
     disjoint_coresets = []
     homoplastic_intbcs = [intbc for intbc, cnt in intbc_counts.items() if cnt > 1]
     for coreset in coresets:
-        disjoint_coreset = set()
+        disjoint_coreset = Multiset()
         for intbc in coreset:
             cnt = intbc_counts[intbc]
             assert cnt >= 1
@@ -88,4 +90,25 @@ def test_make_coresets_disjoint():
         {"4", "5"},
         set(),
         {"7"},
+    ]
+
+
+def test_make_coresets_disjoint_with_multisets():
+    coresets = [
+        {"1", "2", "3"},
+        {"3", "4", "5", "6"},
+        {"6"},
+        {"7"},
+        Multiset(["8"]) + Multiset(["8"]),
+    ]
+    coresets_disjoint = make_coresets_disjoint(
+        coresets=coresets,
+    ).coresets
+    print(f"coresets_disjoint = {coresets_disjoint}")
+    assert coresets_disjoint == [
+        {"1", "2"},
+        {"4", "5"},
+        set(),
+        {"7"},
+        Multiset(["8"]) + Multiset(["8"]),
     ]

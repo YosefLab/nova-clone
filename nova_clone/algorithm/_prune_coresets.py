@@ -41,11 +41,11 @@ class PruneCoresetsReturnType(NamedTuple):
 
 
 def prune_coresets(
-    coresets: List[Set[IntBCType]],
+    coresets: List[Coreset[IntBCType]],
     coreset_co_assignment_matrix: np.array,
     co_occurrence_cutoff: float,
     min_cells_assigned: int,
-) -> List[Set[IntBCType]]:
+) -> List[Coreset[IntBCType]]:
     """
     Prune coresets.
 

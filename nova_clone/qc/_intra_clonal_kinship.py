@@ -116,7 +116,7 @@ def qc_intra_clonal_kinship(
                 f"{means[clone]:.2f} which is less than 2.\n"
                 f"This suggests low lineage tracing capacity or a clone with "
                 f"an incoherent set of cells.\n"
-                f"You might want to exclude this clone from further analysis."
+                f"You might want to drop this clone by using nova_clone.algorithm.drop_clones ."
             )
     return res
 

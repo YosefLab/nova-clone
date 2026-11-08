@@ -10,6 +10,7 @@ import sys
 import time
 from typing import *
 
+from multiset import Multiset
 import numpy as np
 import tqdm
 
@@ -48,7 +49,7 @@ class ComputeCellBCvsCoresetOverlapMatrixReturnType(NamedTuple):
 
 def compute_cellbc_vs_coreset_overlap_matrix(
     cellbc_intbc_sets: Dict[IntBCType, Set[IntBCType]],
-    coresets: List[Set[IntBCType]],
+    coresets: List[Coreset[IntBCType]],
 ) -> ComputeCellBCvsCoresetOverlapMatrixReturnType:
     """
     Pandas dataframe of cell vs coreset.
@@ -64,7 +65,7 @@ def compute_cellbc_vs_coreset_overlap_matrix(
     for cell_idx, cell in tqdm.tqdm(list(enumerate(cells))):
         cell_intbc_set = cellbc_intbc_sets[cell]
         for coreset_idx, coreset in enumerate(coresets):
-            overlap = len(cell_intbc_set.intersection(coreset))
+            overlap = len([intbc for intbc in coreset if intbc in cell_intbc_set])  # Handles multiset coresets (for single-intBC support)
             res_array[cell_idx, coreset_idx] = overlap
 
     cellbc_vs_coreset_overlap_matrix = pd.DataFrame(
@@ -106,6 +107,37 @@ def test_compute_cell_vs_coreset_overlap_matrix():
                 [0, 3],
                 [3, 3],
                 [2, 1],
+            ]
+        ),
+    )
+
+
+def test_compute_cell_vs_coreset_overlap_matrix_with_multisets():
+    cellbc_intbc_sets = {
+        "cell_1": {"1", "2"},
+        "cell_2": {"1", "3"},
+        "cell_3": {"1", "2", "3"},
+        "cell_4": {"1", "2", "4"},
+        "cell_5": {"4"},
+    }
+    coresets = [
+        {"1", "2"},
+        {"1", "3"},
+        Multiset(["4"]) + Multiset(["4"]),
+    ]
+    mat = compute_cellbc_vs_coreset_overlap_matrix(
+        cellbc_intbc_sets=cellbc_intbc_sets,
+        coresets=coresets,
+    ).cellbc_vs_coreset_overlap_matrix
+    np.testing.assert_equal(
+        mat,
+        np.array(
+            [
+                [2, 1, 0],
+                [1, 2, 0],
+                [2, 2, 0],
+                [2, 1, 2],
+                [0, 0, 2],
             ]
         ),
     )

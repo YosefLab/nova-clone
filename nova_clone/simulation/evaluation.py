@@ -75,7 +75,6 @@ def run_model_for_eval(
         clone_calling_results = clone_calling_algorithm(
             {"sample0": synthetic_data["counts_missing_data"]},
             recursive=True,
-            min_intbc_fraction=0,
             edit_distance_cutoff=2,
         )
         recursive_clone_calling_results = clone_calling_results.recursive_clone_call

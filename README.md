@@ -113,13 +113,15 @@ def clone_calling_algorithm(
     min_intbc_cellbc_count: int = 10,
     edit_distance_cutoff: int = 4,
     # Phase 2 parameters
-    min_cells_assigned: int = 30,
-    min_intbc_fraction: float = 0.20,  # (please set to 0.0 when using `recursive=True` mode.)
+    min_cells_assigned: int = 10,
+    min_intbc_fraction: float = 0.05,
     edit_distance_cutoff_phase_2: Optional[int] = None, # If `None`, defaults to `edit_distance_cutoff` value
     # Recursive step parameters
     recursive: bool = False,
     recursive_min_fraction_uniquely_mapped_cells_to_recurse: float = 0.7,
     recursive_min_cells_assigned: int = 10,
+    # Single-intBC clone recovery
+    recover_single_intbc_clones: bool = False,
 ) -> CloneCallingAlgorithmReturnType:
     """
     Args:
@@ -161,9 +163,9 @@ def clone_calling_algorithm(
         min_intbc_fraction:
             Following up on the above argument, we can also specify the
             minimum percentage of cells in the clone containing the intBC
-            needed to include the intBC in the clone's intBC set. A typical
-            processing pipeline sets this to 20%, but this may lose a large
-            number of intBCs.
+            needed to include the intBC in the clone's intBC set. We set this
+            to 5% by default to recover the intBC tail too. Set this to e.g.
+            20% if you only wish to retain only high-frequency intBCs.
        edit_distance_cutoff_phase_2: See description of parameter edit_distance_cutoff.
             If `None` (default) this is set equal to edit_distance_cutoff. This should work
             well in most cases. Reasons for setting this value to something different than
@@ -197,6 +199,15 @@ def clone_calling_algorithm(
             Subclones tend to be smaller than the parent clone, so it is a good
             idea to set this lower than the original
             min_cells_assigned.
+        recover_single_intbc_clones: If `True`, single-intBC clones will also be
+            recovered. Use this if your data contains single-intBC clones. There
+            is an inherent tradeoff in trying to recover single-intBC clones: since
+            these clones have weaker statistical support, unless you are certain
+            that your data has negligible levels of homoplasy, you might end up
+            accidentally overmerging clones. If evolving tracer marks are
+            available, we recommend using these to confirm that the single-intBC
+            clones are high quality, and if there is overmerging we recommend
+            splitting into different clones based on evolving lineage marks.
 
     Returns:
         A `results` NamedTuple of type CloneCallingAlgorithmReturnType, which contains

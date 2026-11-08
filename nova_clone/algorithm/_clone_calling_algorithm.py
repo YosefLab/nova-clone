@@ -7,20 +7,16 @@ The main function exposed by this module is the `clone_calling_algorithm`.
 import logging
 import sys
 import time
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from pandas.api.types import is_signed_integer_dtype, is_string_dtype
 
 from ._build_intbc_graph import build_intbc_graph
 from ._call_clones_from_coresets import call_clones_from_coresets
-from ._compute_cellbc_vs_coreset_overlap_matrix import (
-    compute_cellbc_vs_coreset_overlap_matrix,
-)
 from ._compute_coreset_co_assignment_matrix import compute_coreset_co_assignment_matrix
 from ._find_maximal_coresets import find_maximal_coresets
 from ._keep_reliable_edges import keep_reliable_edges
@@ -260,19 +256,21 @@ def test_remove_empty_clones():
 def clone_calling_algorithm(
     ##### Public parameters (defaults should work well on most datasets) #####
     # Phase 1 parameters
-    intbc_table_per_sample: Dict[SampleNameType, IntBCTableType],
+    intbc_table_per_sample: Dict[str, pd.DataFrame],
     min_intbc_umi_count: int = 10,
     custom_intbc_filtering_function: Callable[[str], bool] = lambda intbc: False,
     min_intbc_cellbc_count: int = 10,
     edit_distance_cutoff: int = 4,
     # Phase 2 parameters
-    min_cells_assigned: int = 30,
-    min_intbc_fraction: float = 0.20,  # (please set to 0.0 when using `recursive=True` mode.)
+    min_cells_assigned: int = 10,
+    min_intbc_fraction: float = 0.05,
     edit_distance_cutoff_phase_2: Optional[int] = None, # If `None`, defaults to `edit_distance_cutoff` value
     # Recursive step parameters
     recursive: bool = False,
     recursive_min_fraction_uniquely_mapped_cells_to_recurse: float = 0.7,
     recursive_min_cells_assigned: int = 10,
+    # Single-intBC clone recovery
+    recover_single_intbc_clones: bool = False,
     ##### Private parameters (we do not expect the user to ever have to change these) #####
     _sequencing_error_pruning_step__co_occurrence_cutoff: float = 0.5,
     _homoplastic_pruning_step__p_max_cutoff: float = 0.5,
@@ -282,7 +280,7 @@ def clone_calling_algorithm(
     _coreset_dealiasing_step__min_overlap_for_assigning_cellbc: int = 2, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
     _coreset_dealiasing_step__co_occurrence_cutoff: float = 0.5, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
     _coreset_disjointing_step__make_disjoint: bool = True, # Private parameter, not exposed to the user. Used for testing.
-    _final_cell_assignment_step__min_overlap_for_assigning_cellbc: int = 2, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
+    _final_cell_assignment_step__min_overlap_for_assigning_cellbc: int = 1, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
     _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set: Optional[int] = None, # Private parameter, not exposed to the user. Used for testing.
 ) -> CloneCallingAlgorithmReturnType:
     """
@@ -325,9 +323,9 @@ def clone_calling_algorithm(
         min_intbc_fraction:
             Following up on the above argument, we can also specify the
             minimum percentage of cells in the clone containing the intBC
-            needed to include the intBC in the clone's intBC set. A typical
-            processing pipeline sets this to 20%, but this may lose a large
-            number of intBCs.
+            needed to include the intBC in the clone's intBC set. We set this
+            to 5% by default to recover the intBC tail too. Set this to e.g.
+            20% if you only wish to retain only high-frequency intBCs.
        edit_distance_cutoff_phase_2: See description of parameter edit_distance_cutoff.
             If `None` (default) this is set equal to edit_distance_cutoff. This should work
             well in most cases. Reasons for setting this value to something different than
@@ -361,6 +359,15 @@ def clone_calling_algorithm(
             Subclones tend to be smaller than the parent clone, so it is a good
             idea to set this lower than the original
             min_cells_assigned.
+        recover_single_intbc_clones: If `True`, single-intBC clones will also be
+            recovered. Use this if your data contains single-intBC clones. There
+            is an inherent tradeoff in trying to recover single-intBC clones: since
+            these clones have weaker statistical support, unless you are certain
+            that your data has negligible levels of homoplasy, you might end up
+            accidentally overmerging clones. If evolving tracer marks are
+            available, we recommend using these to confirm that the single-intBC
+            clones are high quality, and if there is overmerging we recommend
+            splitting into different clones based on evolving lineage marks.
         _sequencing_error_pruning_step__co_occurrence_cutoff: This establishes
             how frequently intBC `x` needs to co-occur with intBC `y` having a
             similar sequence (as determined by the edit_distance_cutoff above)
@@ -457,14 +464,25 @@ def clone_calling_algorithm(
         cellBC collision between different samples.)
     """
     if recursive:
-        if min_intbc_fraction > 0.01:
-            raise ValueError("When using recursive mode, we recommend (and will enforce) using: min_intbc_fraction <= 0.01. Otherwise, the subclonal intBCs will be discarded and little recursive structure will be found.")
+        if min_intbc_fraction > 0.05:
+            raise ValueError("When using recursive mode, we recommend (and will enforce) using: min_intbc_fraction <= 0.05. Otherwise, the subclonal intBCs will be discarded and little recursive structure will be found.")
 
     if edit_distance_cutoff_phase_2 is None:
         edit_distance_cutoff_phase_2 = edit_distance_cutoff
 
     if _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set is None:
         _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set = min_intbc_cellbc_count
+
+    if recover_single_intbc_clones:
+        # We set the min_coreset_size to size to 1.
+        # This retains isolated vertices in the starting coreset family.
+        _preliminary_coreset_building_step__min_coreset_size = 1
+        # Also, if the user is running in single-intBC mode, the homoplasy pruning step should be
+        # skipped, because it discards single-intBC clones. The user has acknowledged
+        # the limitations of recovering clones with weaker statistical support, and will
+        # check the post-QC plots closely.
+        _homoplastic_pruning_step__p_max_cutoff = -1
+
 
     st = time.time()
 
@@ -542,6 +560,7 @@ def clone_calling_algorithm(
         graph=intbc_graph,
         min_coreset_size=_preliminary_coreset_building_step__min_coreset_size,  # noqa
         min_overlap_for_merging_coresets=_preliminary_coreset_building_step__min_overlap_for_merging_coresets,  # noqa
+        recover_single_intbc_clones=recover_single_intbc_clones,
     ).maximal_coresets
 
     # Find aliased coresets; we first need to assign the cells to the coresets.
@@ -752,11 +771,12 @@ def clone_calling_algorithm(
                 min_intbc_cellbc_count=min_intbc_cellbc_count,  # OK? Can consider removing this filter at this point?
                 edit_distance_cutoff=edit_distance_cutoff,  # Doesn't actually matter since there are no sequencing errors at this point
                 _sequencing_error_pruning_step__co_occurrence_cutoff=_sequencing_error_pruning_step__co_occurrence_cutoff,  # Doesn't actually matter since there are no sequencing errors at this point
-                _homoplastic_pruning_step__p_max_cutoff=_homoplastic_pruning_step__p_max_cutoff,  # OK? I can consider removing it too.
+                _homoplastic_pruning_step__p_max_cutoff=-1,  # Technically not needed since recover_single_intbc_clones will force it to -1 anyway.
                 _reliable_edges_step__ratio_cutoff=_reliable_edges_step__ratio_cutoff,  # OK (still need it)
                 _preliminary_coreset_building_step__min_coreset_size=1,  # Since there is no homoplasy eny more, can set it to 1.
                 _preliminary_coreset_building_step__min_overlap_for_merging_coresets=1,  # Basically, we are just looking for connected components at this point.
                 _coreset_dealiasing_step__min_overlap_for_assigning_cellbc=1,  # Again, there is no homoplasy, so we can set it to 1.
+                recover_single_intbc_clones=True,  # Since we allow for single-intBC clones.
                 _coreset_dealiasing_step__co_occurrence_cutoff=_coreset_dealiasing_step__co_occurrence_cutoff,  # Technically, there should be no aliasing since that's how we found the progenitor_intbc_set.
                 min_cells_assigned=recursive_min_cells_assigned,  # OK - we allow for a smaller value to recover smaller subclones.
                 _coreset_disjointing_step__make_disjoint=_coreset_disjointing_step__make_disjoint,  # Doesn't matter - there should be no homoplasy at this point.
@@ -842,6 +862,8 @@ def clone_calling_algorithm(
         recursive_clone_call = None
         recursive_clone_call_integration_hierarchy = None
 
+    sanity_check_clone_call(clone_call)
+
     total_time = time.time() - st
     res = CloneCallingAlgorithmReturnType(
         clone_call=clone_call,
@@ -924,22 +946,9 @@ def test_clone_calling_algorithm_mini():
 
     clone_call = clone_calling_algorithm(
         intbc_table_per_sample={"sample1": intbc_table},
-        min_intbc_umi_count=10,
-        custom_intbc_filtering_function=lambda intbc: False,
         min_intbc_cellbc_count=1,
         edit_distance_cutoff=1,
-        _sequencing_error_pruning_step__co_occurrence_cutoff=0.5,
-        _homoplastic_pruning_step__p_max_cutoff=-0.1,
-        _reliable_edges_step__ratio_cutoff=-0.1,
-        _preliminary_coreset_building_step__min_coreset_size=2,
-        _preliminary_coreset_building_step__min_overlap_for_merging_coresets=2,
-        _coreset_dealiasing_step__min_overlap_for_assigning_cellbc=2,
-        _coreset_dealiasing_step__co_occurrence_cutoff=1.1,
         min_cells_assigned=1,
-        _coreset_disjointing_step__make_disjoint=True,
-        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
-        _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
-        min_intbc_fraction=-0.1,
         # Collapse 1-edit neighbors of an already-kept intBC (drops FFH vs FFF).
         edit_distance_cutoff_phase_2=2,
     ).clone_call
@@ -1023,24 +1032,10 @@ def test_recursive_clone_calling_algorithm_mini():
 
     clone_call_namedtuple = clone_calling_algorithm(
         intbc_table_per_sample={"sample1": intbc_table},
-        min_intbc_umi_count=10,
-        custom_intbc_filtering_function=lambda intbc: False,
         min_intbc_cellbc_count=1,
         edit_distance_cutoff=0,
-        _sequencing_error_pruning_step__co_occurrence_cutoff=1.1,
-        _homoplastic_pruning_step__p_max_cutoff=-0.1,
-        _reliable_edges_step__ratio_cutoff=0.5,
-        _preliminary_coreset_building_step__min_coreset_size=2,
-        _preliminary_coreset_building_step__min_overlap_for_merging_coresets=2,
-        _coreset_dealiasing_step__min_overlap_for_assigning_cellbc=2,
-        _coreset_dealiasing_step__co_occurrence_cutoff=1.1,
         min_cells_assigned=1,
-        _coreset_disjointing_step__make_disjoint=True,
-        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
-        _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
-        min_intbc_fraction=-0.1,
         recursive=True,
-        recursive_min_fraction_uniquely_mapped_cells_to_recurse=0.8,
         recursive_min_cells_assigned=2,
     )
     clone_call = clone_call_namedtuple.clone_call
@@ -1093,6 +1088,141 @@ def test_recursive_clone_calling_algorithm_mini():
     }
 
 
+def test_recursive_clone_calling_algorithm_larger():
+    """
+    Same as test_recursive_clone_calling_algorithm_mini but with many cells.
+
+    Subclone structure is:
+
+        root
+         |
+        A,B  (first round of integration)
+         |
+        /  \
+       C    D  (second round of integration)
+       |    |
+      ABC  ABD
+    """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(0)
+
+    n_cell_copies = 10
+
+    intbc_table = pd.DataFrame(
+        data=[
+            [f"cellBC_1_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_1_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_1_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_11_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_11_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_11_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_2_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_2_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_2_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_22_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_22_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_22_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_3_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_3_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_3_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_33_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_33_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_33_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_4_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_4_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_4_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_44_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_44_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_44_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_5_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_5_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "AAA", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "BBB", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "CCC", 40] for i in range(n_cell_copies)
+        ] + [
+            [f"cellBC_6_{i}", "DDD", 40] for i in range(n_cell_copies)
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call_namedtuple = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,
+        recursive=True,
+    )
+    clone_call = clone_call_namedtuple.clone_call
+    recursive_clone_call = clone_call_namedtuple.recursive_clone_call
+    _check_are_clones(
+        clone_call=clone_call,
+        expected_clones=[  # all cells
+            [f"sample1_cellBC_1_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_11_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_2_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_22_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_3_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_33_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_4_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_44_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_5_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_6_{i}" for i in range(n_cell_copies)]
+        ],
+    )
+    _check_are_clones(
+        clone_call=recursive_clone_call["clone_0"].clone_call,
+        expected_clones=[[]
+            + [f"sample1_cellBC_1_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_11_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_2_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_22_{i}" for i in range(n_cell_copies)]
+        ] + [ []
+            + [f"sample1_cellBC_3_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_33_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_4_{i}" for i in range(n_cell_copies)]
+            + [f"sample1_cellBC_44_{i}" for i in range(n_cell_copies)]
+        ],
+    )
+    print(
+        f"clone_call_namedtuple.recursive_clone_call_integration_hierarchy = {clone_call_namedtuple.recursive_clone_call_integration_hierarchy}"
+    )
+    assert clone_call_namedtuple.recursive_clone_call_integration_hierarchy == {
+        "clone_0": (
+            {"AAA", "BBB"},
+            {
+                "clone_0": ({"CCC"}, None),
+                "clone_1": ({"DDD"}, None),
+            },
+        ),
+    }
+
+
 def test_recursive_clone_calling_algorithm_on_real_data():
     """
     Tests the recursive clone calling algorithm on real data.
@@ -1103,7 +1233,6 @@ def test_recursive_clone_calling_algorithm_on_real_data():
                 "notebooks/test_data/3B_clone_11_intBC_table_per_sample.csv"
             )
         },
-        min_intbc_fraction=0.01,
         recursive=True,
     )
 
@@ -1240,4 +1369,203 @@ def test_clone_calling_algorithm_doublet():
     )
     assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet"] == set(
         ["clone_0", "clone_1"]
+    )
+
+
+def test_clone_calling_algorithm_single_intBC_clones():
+    """
+    NovaClone can recover single intBC clones too, by running with
+    `recover_single_intbc_clones=True`.
+    """
+    ncells_per_clone = 100
+    intbc_table = pd.DataFrame(
+        data=[[f"cellBC_{i}", "AAA", 40] for i in range(ncells_per_clone)]
+        + [[f"cellBC_{i}", "BBB", 40] for i in range(ncells_per_clone)]
+        + [[f"cellBC_{i}", "CCC", 40] for i in range(ncells_per_clone)]
+        + [
+            [f"cellBC_{i}", "DDD", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "EEE", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "FFF", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ] + [
+            [f"cellBC_{i}", "GGG", 40]
+            for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)
+        ] + [
+            [f"cellBC_{i}", "HHH", 40]
+            for i in range(3 * ncells_per_clone, 4 * ncells_per_clone)
+        ]
+        + [
+            ["cellBC_doublet", "AAA", 40],
+            ["cellBC_doublet", "BBB", 40],
+            ["cellBC_doublet", "CCC", 40],
+            ["cellBC_doublet", "DDD", 40],
+            ["cellBC_doublet", "EEE", 40],
+            ["cellBC_doublet", "FFF", 40],
+        ] + [
+            ["cellBC_doublet2", "AAA", 40],
+            ["cellBC_doublet2", "BBB", 40],
+            ["cellBC_doublet2", "CCC", 40],
+            ["cellBC_doublet2", "GGG", 40],
+        ] + [
+            ["cellBC_doublet3", "GGG", 40],
+            ["cellBC_doublet3", "HHH", 40],
+        ] + [
+            ["cellBC_doublet4", "AAA", 40],
+            ["cellBC_doublet4", "BBB", 40],
+            ["cellBC_doublet4", "GGG", 40],
+            ["cellBC_doublet4", "HHH", 40],
+        ] + [
+            ["empty_droplet", "AAA", 1],
+            ["empty_droplet", "BBB", 1],
+            ["empty_droplet", "GGG", 1],
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone)],
+            [
+                f"sample1_cellBC_{i}"
+                for i in range(ncells_per_clone, 2 * ncells_per_clone)
+            ],
+            [
+                f"sample1_cellBC_{i}"
+                for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)
+            ],
+            [
+                f"sample1_cellBC_{i}"
+                for i in range(3 * ncells_per_clone, 4 * ncells_per_clone)
+            ],
+        ],
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet"] == set(
+        ["clone_0", "clone_1"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet2"] == set(
+        ["clone_0", "clone_2"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet3"] == set(
+        ["clone_2", "clone_3"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_cellBC_doublet4"] == set(
+        ["clone_0", "clone_2", "clone_3"]
+    )
+    assert clone_call.cell_to_clones_mapping["sample1_empty_droplet"] == set(
+        []
+    )
+
+
+def test_clone_calling_algorithm_single_intBC_clones_trivial():
+    """
+    NovaClone can recover single intBC clones too, by running with
+    `recover_single_intbc_clones=True`. Just one clone with one intBC.
+    """
+    ncells_per_clone = 100
+    intbc_table = pd.DataFrame(
+        data=[[f"cellBC_{i}", "AAA", 40] for i in range(ncells_per_clone)],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone)],
+        ],
+    )
+
+
+def test_clone_calling_algorithm_single_intBC_clones__border_case():
+    f"""
+    The pruned intBC graph has:
+    ["a", "b"]
+    ["a", "c"]
+    ["d"]
+    After making the coresets disjoint, this leads to coresets ["b"], ["c"], ["d"];
+    - With a _final_cell_assignment_step__min_overlap_for_assigning_cellbc=1,
+    the three clones remain, all doublets correctly identified.
+    - With a _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
+    this should cause the ["b"] and ["c"] coresets to get no cells mapped (and thus drop off),
+    versus ["d"] does get them since it's a single-intBC clone. However, ["d"] gets `cellBC_doublet2`
+    mapped since it only overlaps in 1 intBC with the pruned coresets ["b"], ["c"].
+    """
+    ncells_per_clone = 100
+    intbc_table = pd.DataFrame(
+        data=[[f"cellBC_{i}", "AAA", 40] for i in range(ncells_per_clone)]
+        + [[f"cellBC_{i}", "BBB", 40] for i in range(ncells_per_clone)]
+        + [
+            [f"cellBC_{i}", "AAA", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "CCC", 40]
+            for i in range(ncells_per_clone, 2 * ncells_per_clone)
+        ]
+        + [
+            [f"cellBC_{i}", "DDD", 40]
+            for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)
+        ]
+        + [
+            ["cellBC_doublet", "AAA", 40],
+            ["cellBC_doublet", "BBB", 40],
+            ["cellBC_doublet", "CCC", 40],
+        ] + [
+            ["cellBC_doublet2", "AAA", 40],
+            ["cellBC_doublet2", "BBB", 40],
+            ["cellBC_doublet2", "CCC", 40],
+            ["cellBC_doublet2", "DDD", 40],
+        ] + [
+            ["empty_droplet", "AAA", 1],
+            ["empty_droplet", "BBB", 1],
+            ["empty_droplet", "GGG", 1],
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+
+    clone_call_1 = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call_1,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone)],
+            [f"sample1_cellBC_{i}" for i in range(ncells_per_clone, 2 * ncells_per_clone)],
+            [f"sample1_cellBC_{i}" for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)],
+        ],
+    )
+
+    clone_call_2 = clone_calling_algorithm(
+        intbc_table_per_sample={"sample1": intbc_table},
+        edit_distance_cutoff=0,  # Turn off sequencing error correction
+        recover_single_intbc_clones=True,
+        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
+    ).clone_call
+
+    _check_are_clones(
+        clone_call=clone_call_2,
+        expected_clones=[
+            [f"sample1_cellBC_{i}" for i in range(2 * ncells_per_clone, 3 * ncells_per_clone)] + ["sample1_cellBC_doublet2"],
+        ],
     )

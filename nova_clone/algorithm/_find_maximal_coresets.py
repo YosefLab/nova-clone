@@ -22,6 +22,7 @@ import sys
 import time
 from typing import Set
 
+from multiset import Multiset
 import networkx as nx
 import numpy as np
 import tqdm
@@ -52,7 +53,7 @@ class FindMaximalCoresetsReturnType(NamedTuple):
         total_time: Total time taken.
     """
 
-    maximal_coresets: List[Set[str]]
+    maximal_coresets: List[Coreset[str]]
     total_time: float
 
 
@@ -312,10 +313,32 @@ def test_merge_coresets():
     assert res == [{"a", "b", "c", "d", "e", "f"}]
 
 
+def duplicate_single_intbcs(maximal_coresets: List[set]) -> List[Multiset]:
+    """
+    Elevates single-intBC coresets into multisets which repeat the intBC twice,
+    thereby giving it higher statistical support in all subsequent steps of the algorithm.
+    """
+    res = []
+    for coreset in maximal_coresets:
+        if len(coreset) == 1:
+            res.append(Multiset(coreset) + Multiset(coreset))
+        else:
+            res.append(coreset)
+    return res
+
+
+def test_duplicate_single_intbcs():
+    res = duplicate_single_intbcs([set(["a"]), set(["b", "c"])])
+    assert(
+        res == [Multiset(["a", "a"]), {"b", "c"}]
+    )
+
+
 def find_maximal_coresets(
     graph: GraphType,
     min_coreset_size: int,
     min_overlap_for_merging_coresets: int,
+    recover_single_intbc_clones: bool = False,
 ) -> FindMaximalCoresetsReturnType:
     """
     Find maximal coresets.
@@ -327,7 +350,14 @@ def find_maximal_coresets(
 
     A maximal coreset is a coreset that is not strictly contained in any larger
     coreset, using the above closure rules.
+
+    If `recover_single_intbc_clones`, then maximal coresets with just 1 intBC are elevated to
+    a multiset with 2 intBCs (the same intBC twice).
     """
+    if recover_single_intbc_clones and min_coreset_size != 1:
+        raise ValueError(
+            f"You are trying to recover_single_intbc_clones; this requires `min_coreset_size=1`."
+        )
     st = time.time()
     logger = logging.getLogger(__name__)
     logger.info("Going to find_maximal_coresets ...")
@@ -342,6 +372,9 @@ def find_maximal_coresets(
         coresets=coresets,
         min_overlap_for_merging_coresets=min_overlap_for_merging_coresets,
     )
+    if recover_single_intbc_clones:
+        maximal_coresets = duplicate_single_intbcs(maximal_coresets)
+
     total_time = time.time() - st
 
     res = FindMaximalCoresetsReturnType(

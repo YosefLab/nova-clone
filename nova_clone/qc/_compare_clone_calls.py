@@ -198,22 +198,9 @@ def test_qc_compare_clone_calls():
 
     clone_call_1 = clone_calling_algorithm(
         intbc_table_per_sample={"sample1": intbc_table},
-        min_intbc_umi_count=10,
-        custom_intbc_filtering_function=lambda intbc: False,
         min_intbc_cellbc_count=1,
         edit_distance_cutoff=0,
-        _sequencing_error_pruning_step__co_occurrence_cutoff=1.1,
-        _homoplastic_pruning_step__p_max_cutoff=-0.1,
-        _reliable_edges_step__ratio_cutoff=-0.1,
-        _preliminary_coreset_building_step__min_coreset_size=2,
-        _preliminary_coreset_building_step__min_overlap_for_merging_coresets=2,
-        _coreset_dealiasing_step__min_overlap_for_assigning_cellbc=2,
-        _coreset_dealiasing_step__co_occurrence_cutoff=1.1,
         min_cells_assigned=1,
-        _coreset_disjointing_step__make_disjoint=True,
-        _final_cell_assignment_step__min_overlap_for_assigning_cellbc=2,
-        _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
-        min_intbc_fraction=-0.1,
     ).clone_call
     clone_call_2 = call_lineage_groups(
         intbc_table_per_sample={"sample1": intbc_table},
