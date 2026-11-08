@@ -26,8 +26,7 @@ def run_synthetic_data_creation_for_eval(
     seq_error_sub_rate,
     missing_data_rate,
     multiplet_rate,
-    min_barcodes_per_generation,
-    min_cells_number_per_clone,
+    homoplasy_sigma,
     seed,
 ):
     time_start = time.time()
@@ -41,8 +40,7 @@ def run_synthetic_data_creation_for_eval(
         tree_depth_range_max=tree_depth_range_max,
         alpha=alpha,
         decay_speed=decay_speed,
-        min_barcodes_per_generation=min_barcodes_per_generation,
-        min_cells_number_per_clone=min_cells_number_per_clone,
+        homoplasy_sigma=homoplasy_sigma,
     )
     synthetic_data = {k: v for k, v in synthetic_data.items() if k in ['final_cell_clone', 'clones_barcodes', 'each_subclone_barcodes', 'counts_missing_data','subtree_combinations','clone_cells_dict']}
     time_end = time.time()
@@ -64,8 +62,7 @@ def run_model_for_eval(
     seq_error_sub_rate,
     missing_data_rate,
     multiplet_rate,
-    min_barcodes_per_generation,
-    min_cells_number_per_clone,
+    homoplasy_sigma,
     seed,
 ):
     time_start = time.time()
@@ -158,8 +155,7 @@ def run_eval(
     seq_error_sub_rate,
     missing_data_rate,
     multiplet_rate,
-    min_barcodes_per_generation,
-    min_cells_number_per_clone,
+    homoplasy_sigma,
     seed,
 ):
     time_start = time.time()
@@ -206,8 +202,7 @@ def check_missing_files(
         seq_error_sub_rate=regime_args["seq_error_sub_rate"],
         missing_data_rate=regime_args["missing_data_rate"],
         multiplet_rate=regime_args["multiplet_rate"],
-        min_barcodes_per_generation=regime_args["min_barcodes_per_generation"],
-        min_cells_number_per_clone=regime_args["min_cells_number_per_clone"],
+        homoplasy_sigma=regime_args["homoplasy_sigma"],
         seed=seed
     )
 
@@ -223,8 +218,7 @@ def check_missing_files(
         seq_error_sub_rate=regime_args["seq_error_sub_rate"],
         missing_data_rate=regime_args["missing_data_rate"],
         multiplet_rate=regime_args["multiplet_rate"],
-        min_barcodes_per_generation=regime_args["min_barcodes_per_generation"],
-        min_cells_number_per_clone=regime_args["min_cells_number_per_clone"],
+        homoplasy_sigma=regime_args["homoplasy_sigma"],
         seed=seed
     )
 
@@ -241,8 +235,7 @@ def check_missing_files(
         seq_error_sub_rate=regime_args["seq_error_sub_rate"],
         missing_data_rate=regime_args["missing_data_rate"],
         multiplet_rate=regime_args["multiplet_rate"],
-        min_barcodes_per_generation=regime_args["min_barcodes_per_generation"],
-        min_cells_number_per_clone=regime_args["min_cells_number_per_clone"],
+        homoplasy_sigma=regime_args["homoplasy_sigma"],
         seed=seed,
     )
     return evaluation_results
@@ -261,8 +254,7 @@ def eval_function(
         "seq_error_sub_rate": 0.0001,
         "missing_data_rate": 0.05,
         "multiplet_rate": 0.05,
-        "min_barcodes_per_generation": 10,
-        "min_cells_number_per_clone": 15,
+        "homoplasy_sigma": 0.0,
     },
     repetition: int = 0,
 ):
@@ -346,8 +338,7 @@ def test_evaluation_smoketest():
             "seq_error_sub_rate": 0.0001,
             "missing_data_rate": 0.05,
             "multiplet_rate": 0.05,
-            "min_cells_number_per_clone": 2,
-            "min_barcodes_per_generation": 10,
+            "homoplasy_sigma": 0.0,
         },
         repetition=0,
     )

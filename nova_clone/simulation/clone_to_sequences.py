@@ -267,6 +267,7 @@ def run_synthetic_data_creation(
     min_barcodes_per_generation: int = 10,
     minP: float = 0.1,
     maxP: float = 0.9,
+    homoplasy_sigma: float = 0.0,
 ) -> None:
     """
     Run the synthetic data creation pipeline
@@ -300,6 +301,13 @@ def run_synthetic_data_creation(
         low=tree_depth_range_min, high=tree_depth_range_max, size=number_superclones
     )
     total_barcodes_per_superclone = min_barcodes_per_generation * tree_depth_range_max
+    max_integrations = number_superclones * (2 ** tree_depth_range_max - 1) * total_barcodes_per_superclone
+    barcode_library = creating_tree.create_barcode_library(
+        library_size=max_integrations,
+        size_of_barcodes=size_of_barcodes,
+        homoplasy_sigma=homoplasy_sigma,
+    )
+    full_barcode_library = list(barcode_library)
 
     for i in range(number_superclones):
         new_superclone = creating_tree.SuperClone(
@@ -308,6 +316,7 @@ def run_synthetic_data_creation(
             decay_speed=decay_speed,
             alpha=alpha,
             size_of_barcodes=size_of_barcodes,
+            barcode_library=barcode_library,
             percentage_of_barcodes_silenced_total=percentage_of_barcodes_silenced_total,
             total_barcodes_per_superclone=total_barcodes_per_superclone,
             minP=minP,
@@ -354,6 +363,7 @@ def run_synthetic_data_creation(
     results = {
         'clone_hierarchy': clone_hierarchy_all_superclones,
         'subtree_combinations': all_subtree_combinations,
+        "barcode_library": full_barcode_library,
         "clone_cells_dict": clone_cells_dict,
         "cell_intBCs_dict": cell_intBCs_dict,
         "full_UMI_dict": full_number_UMI_dict,
@@ -394,4 +404,5 @@ def test_run_synthetic_data_creation_smoketest():
         min_barcodes_per_generation=10,
         minP=1,
         maxP=1,
+        homoplasy_sigma=1
     )

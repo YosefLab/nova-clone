@@ -2,24 +2,62 @@ import random
 from typing import Dict, List, Set, Tuple
 import numpy as np
 
-
-def add_new_barcodes(
-        number_of_barcodes: int, 
-        size_of_barcodes: int = 14
+def create_barcode_library(
+        library_size: int,
+        size_of_barcodes: int = 14,
+        homoplasy_sigma: float = 0.0,
 ) -> List[str]:
     """
-    Generate random barcodes
+    Create a barcode library: unique barcodes (colonies), optionally replicated by a lognormal
+    copy number (amplification), to mimic the real barcode library used for integration
 
     Args:
-        number_of_barcodes: number of barcodes to generate
+        library_size: number of unique barcodes in the library
         size_of_barcodes: size of the barcodes
+        homoplasy_sigma: unevenness of barcode amplification, 0 gives equal copies for all barcodes,
+            if 0 each barcode appears once (no replicates, no homoplasy).
+
+    Returns:
+        list of barcode molecules in the library, shuffled
+    """
+    if library_size > 4 ** size_of_barcodes:
+        unique_barcodes = ["".join(random.choices("ATCG", k=size_of_barcodes)) for _ in range(library_size)]
+    else:
+        unique_barcodes: Set[str] = set()
+        while len(unique_barcodes) < library_size:
+            unique_barcodes.add("".join(random.choices("ATCG", k=size_of_barcodes)))
+    unique_barcodes = list(unique_barcodes)
+    if homoplasy_sigma == 0:
+        barcode_library = unique_barcodes
+    else:
+        copy_numbers = np.random.lognormal(mean=0, sigma=homoplasy_sigma, size=library_size)
+        copy_numbers = np.maximum(np.round(copy_numbers), 1).astype(int)
+        barcode_library: List[str] = []
+        for barcode, copies in zip(unique_barcodes, copy_numbers):
+            barcode_library.extend([barcode] * copies)
+    random.shuffle(barcode_library)
+    return barcode_library
+
+
+def add_new_barcodes(
+        number_of_barcodes: int,
+        barcode_library: List[str],
+) -> List[str]:
+    """
+    Pull barcodes for a clone from the barcode library, pulled barcode molecules are deleted from the library
+
+    Args:
+        number_of_barcodes: number of barcodes to pull
+        barcode_library: list of barcode molecules in the library (shuffled)
 
     Returns:
         list of new barcodes
     """
+    if number_of_barcodes > len(barcode_library):
+        raise ValueError("barcode library is too small for the number of integrations")
     barcodes: List[str] = []
     for _ in range(number_of_barcodes):
-        barcodes.append("".join(random.choices("ATCG", k=size_of_barcodes)))
+        barcodes.append(barcode_library.pop())
     return barcodes
 
 
@@ -188,6 +226,7 @@ class CloneNode:
         clones_barcode_number: int,
         percentage_of_barcodes_silenced_per_clone: float,
         inherited_barcodes: List[str] = [],
+        barcode_library: List[str] = [],
         size_of_barcodes: int = 14,
     ):
         self.barcodes = None
@@ -198,12 +237,13 @@ class CloneNode:
         self.name = clone_name
         self.childs: List[CloneNode] = []
         self.percentage_of_barcodes_silenced_per_clone = percentage_of_barcodes_silenced_per_clone
+        self.barcode_library = barcode_library
 
     def add_barcodes(self) -> None:
         """
         Add new barcodes to the inherited barcodes of the clone
         """
-        new_barcodes = add_new_barcodes(self.clones_barcode_number, self.size_of_barcodes)
+        new_barcodes = add_new_barcodes(self.clones_barcode_number, self.barcode_library)
         self.barcodes = self.inherited_barcodes + new_barcodes
 
     def silence_barcodes(self) -> None:
@@ -228,6 +268,7 @@ class SuperClone:
         superclone_number: int,
         number_of_generations: int,
         total_barcodes_per_superclone: int,
+        barcode_library: List[str] = [],
         size_of_barcodes: int = 14,
         alpha: float = -1,
         decay_speed: float = 1,
@@ -238,6 +279,7 @@ class SuperClone:
         self._superclone_number = superclone_number
         self._number_of_generations = number_of_generations
         self.size_of_barcodes = size_of_barcodes
+        self.barcode_library = barcode_library
         self.minP = minP
         self.maxP = maxP
         self.clones_names = create_clone_names(
@@ -285,6 +327,7 @@ class SuperClone:
                     self.current_clone_index
                 ],
                 size_of_barcodes=self.size_of_barcodes,
+                barcode_library=self.barcode_library,
                 generation=current_generation,
                 percentage_of_barcodes_silenced_per_clone=self.percentage_of_barcodes_silenced_per_clone,
             )
@@ -301,6 +344,7 @@ class SuperClone:
                     self.current_clone_index
                 ],
                 size_of_barcodes=self.size_of_barcodes,
+                barcode_library=self.barcode_library,
                 inherited_barcodes=current.barcodes,
                 generation=current_generation,
                 percentage_of_barcodes_silenced_per_clone=self.percentage_of_barcodes_silenced_per_clone,
