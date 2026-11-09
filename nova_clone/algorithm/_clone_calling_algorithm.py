@@ -735,7 +735,7 @@ def clone_calling_algorithm(
                     intbc_graph_for_clone
                 )
                 progenitor_intbc_set.add(intbc)
-            if all_intbcs_popped:
+            if all_intbcs_popped or len(progenitor_intbc_set) == 0:
                 # There was no subclonal structure left.
                 recursive_clone_call[clone] = None
                 recursive_clone_call_integration_hierarchy[clone] = (
