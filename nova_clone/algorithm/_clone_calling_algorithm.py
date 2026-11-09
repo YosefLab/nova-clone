@@ -743,7 +743,9 @@ def clone_calling_algorithm(
                     None,
                 )
                 logger.info(
-                    "All intBCs popped when trying to identify progenitor intBC set. No subclonal structure found. Will not try to recurse."
+                    "All intBCs popped when trying to identify progenitor intBC set, or "
+                    "progenitor_intbc_set empty. No subclonal structure found. Will not "
+                    "try to recurse."
                 )
                 continue
             # If we are here, it means we were able to disconnect the graph.
