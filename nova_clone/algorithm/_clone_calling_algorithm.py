@@ -629,7 +629,7 @@ def clone_calling_algorithm(
 
             # Since we are going to be popping intBCs until the graph disconnects,
             # we better start with a connected graph. This is ensured by the coresets.
-            # Specifically, we consider the pruned coresets (which are dealized), and
+            # Specifically, we consider the pruned coresets (which are dealiased), and
             # not the disjointed ones (since the disjointed ones lose homoplastic intBCs).
             clone_id = int(clone[len("clone_") :])
             pruned_coreset_for_clone = pruned_coresets[clone_id]
