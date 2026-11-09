@@ -149,7 +149,8 @@ def clone_calling_algorithm(
             `y` at an edit distance <= edit_distance_cutoff. If so, we remove `x`.
             Similarly, in the second phase of the algorithm, when we reconstruct
             the intBC set for each clone de novo, we discard each intBC with an
-            edit distance <= edit_distance_cutoff to some other intBC in the intBC set.
+            edit distance <= edit_distance_cutoff to some more abundant intBC already
+            kept in the clone's intBC set.
             We allow setting the cutoff for phase 2 differently with `edit_distance_cutoff_phase_2`.
         min_cells_assigned: Coresets with less than this number of mapped cells
             will be dropped. If you wish to recover smaller clones, you can lower
