@@ -504,11 +504,8 @@ def clone_calling_algorithm(
     # signature, leading to a clone with empty intBC set.
     clone_call = remove_empty_clones(clone_call)
 
-    print("********************************************************************")
-    print("****** Recurse if requested to estimate integration hierarchy ******")
-    print("********************************************************************")
-
     if recursive:
+        # Recurse to find the integration hierarchy.
         recursive_clone_call = {}
         recursive_clone_call_integration_hierarchy = {}
         clones = list(clone_call.clone_to_cells_mapping.keys())
