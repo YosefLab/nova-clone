@@ -618,7 +618,7 @@ def clone_calling_algorithm(
             print(f"Recursively calling clones on clone: {clone} ...")
 
             cells_in_clone = sorted(list(clone_call.clone_to_cells_mapping[clone]))
-            # A clone may span multiple samples, but cellBCs are only unique within a sample.
+            # A clone may span multiple samples
             cells_in_clone_per_sample = defaultdict(set)
             for cell in cells_in_clone:
                 sample, cellbc = cell.split("_", 1)
