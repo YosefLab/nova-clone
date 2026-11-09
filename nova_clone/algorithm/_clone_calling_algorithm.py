@@ -596,7 +596,7 @@ def clone_calling_algorithm(
         min_overlap_for_assigning_cellbc=_final_cell_assignment_step__min_overlap_for_assigning_cellbc,
         min_intbc_counts_for_adding_intbc_to_clone_intbc_set=_call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set,
         min_intbc_fraction_for_adding_to_clone_intbc_set=min_intbc_fraction,
-        min_edit_distance_for_adding_to_clone_intbc_set=edit_distance_cutoff_phase_2,
+        edit_distance_cutoff=edit_distance_cutoff_phase_2,
         custom_intbc_filtering_function=custom_intbc_filtering_function,
     )
     clone_call = call_clones_from_coresets_return.clone_call
