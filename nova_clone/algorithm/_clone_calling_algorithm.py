@@ -301,20 +301,17 @@ def clone_calling_algorithm(
             `True` will be discarded.
         min_intbc_cellbc_count: IntBCs appearing in less than this number of
             cellBCs will be discarded.
-        edit_distance_cutoff: Minimum *allowed* edit distance. E.g. if you expect there to
-            exist sequencing errors at edit distance 3 but not 4, please set this to 4.
+        edit_distance_cutoff: Edit distance cutoff. E.g. if you expect there to
+            exist sequencing errors at edit distance 4 but not 5, please set this to 4.
             To be precise about how this is used: When building clonal signatures (phase 1 of
             the algorithm), we identify putative sequencing errors by checking for
             intBCs `x` frequently co-occurring with another (more frequent) intBC
             `y` at an edit distance <= edit_distance_cutoff. If so, we remove `x`.
-            In the second phase of the algorithm, when we reconstruct
-            the intBC set for each clone de novo, we require that the edit distance
-            to any other more abundant intBC is >= edit_distance_cutoff.
-            Note that our cutoff for phase 1 is extra stringent to be extra safe, since
-            sequencing error in phase 1 have a bigger consequence (overmerging clones) than
-            in phase 2 (just getting some aliased characters which will likely get dropped
-            due to low frequency via `min_intbc_fraction` anyway). We allow setting the
-            cutoff for phase 2 differently with `edit_distance_cutoff_phase_2`.
+            Similarly, in the second phase of the algorithm, when we reconstruct
+            the intBC set for each clone de novo, we discard each intBC with an
+            edit distance <= edit_distance_cutoff to some more abundant intBC already
+            kept in the clone's intBC set.
+            We allow setting the cutoff for phase 2 differently with `edit_distance_cutoff_phase_2`.
         min_cells_assigned: Coresets with less than this number of mapped cells
             will be dropped. If you wish to recover smaller clones, you can lower
             this, however, note that since all \intBCs are supported by at least
@@ -600,7 +597,7 @@ def clone_calling_algorithm(
         min_overlap_for_assigning_cellbc=_final_cell_assignment_step__min_overlap_for_assigning_cellbc,
         min_intbc_counts_for_adding_intbc_to_clone_intbc_set=_call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set,
         min_intbc_fraction_for_adding_to_clone_intbc_set=min_intbc_fraction,
-        min_edit_distance_for_adding_to_clone_intbc_set=edit_distance_cutoff_phase_2,
+        edit_distance_cutoff=edit_distance_cutoff_phase_2,
         custom_intbc_filtering_function=custom_intbc_filtering_function,
     )
     clone_call = call_clones_from_coresets_return.clone_call
@@ -621,11 +618,15 @@ def clone_calling_algorithm(
             print(f"Recursively calling clones on clone: {clone} ...")
 
             cells_in_clone = sorted(list(clone_call.clone_to_cells_mapping[clone]))
-            cells_in_clone = ["_".join(x.split("_")[1:]) for x in cells_in_clone]
+            # A clone may span multiple samples
+            cells_in_clone_per_sample = defaultdict(set)
+            for cell in cells_in_clone:
+                sample, cellbc = cell.split("_", 1)
+                cells_in_clone_per_sample[sample].add(cellbc)
 
             # Since we are going to be popping intBCs until the graph disconnects,
             # we better start with a connected graph. This is ensured by the coresets.
-            # Specifically, we consider the pruned coresets (which are dealized), and
+            # Specifically, we consider the pruned coresets (which are dealiased), and
             # not the disjointed ones (since the disjointed ones lose homoplastic intBCs).
             clone_id = int(clone[len("clone_") :])
             pruned_coreset_for_clone = pruned_coresets[clone_id]
@@ -651,7 +652,7 @@ def clone_calling_algorithm(
                 sample: intbc_table.drop(
                     intbc_table[
                         (~intbc_table["intBC"].isin(intbc_set_to_disconnect))
-                        | (~intbc_table["cellBC"].isin(cells_in_clone))
+                        | (~intbc_table["cellBC"].isin(cells_in_clone_per_sample[sample]))
                     ].index
                 )
                 for sample, intbc_table in original_intbc_table_per_sample.items()
@@ -731,7 +732,7 @@ def clone_calling_algorithm(
                     intbc_graph_for_clone
                 )
                 progenitor_intbc_set.add(intbc)
-            if all_intbcs_popped:
+            if all_intbcs_popped or len(progenitor_intbc_set) == 0:
                 # There was no subclonal structure left.
                 recursive_clone_call[clone] = None
                 recursive_clone_call_integration_hierarchy[clone] = (
@@ -739,7 +740,9 @@ def clone_calling_algorithm(
                     None,
                 )
                 logger.info(
-                    "All intBCs popped when trying to identify progenitor intBC set. No subclonal structure found. Will not try to recurse."
+                    "All intBCs popped when trying to identify progenitor intBC set, or "
+                    "progenitor_intbc_set empty. No subclonal structure found. Will not "
+                    "try to recurse."
                 )
                 continue
             # If we are here, it means we were able to disconnect the graph.
@@ -759,7 +762,7 @@ def clone_calling_algorithm(
                 sample: intbc_table.drop(
                     intbc_table[
                         (intbc_table["intBC"].isin(progenitor_intbc_set))
-                        | (~intbc_table["cellBC"].isin(cells_in_clone))
+                        | (~intbc_table["cellBC"].isin(cells_in_clone_per_sample[sample]))
                     ].index
                 )
                 for sample, intbc_table in original_intbc_table_per_sample.items()
@@ -797,8 +800,8 @@ def clone_calling_algorithm(
             )
             uniquely_mapped_cells_in_recursive_clone_call = sum(
                 [
-                    len(cells_in_clone)
-                    for cells_in_clone in recursive_clone_call__for_this_clone.clone_call.clone_to_cells_mapping.values()
+                    len(cells_in_subclone)
+                    for cells_in_subclone in recursive_clone_call__for_this_clone.clone_call.clone_to_cells_mapping.values()
                 ]
             )
             fraction_uniquely_mapped_cells_in_recursive_clone_call = (
@@ -950,7 +953,7 @@ def test_clone_calling_algorithm_mini():
         edit_distance_cutoff=1,
         min_cells_assigned=1,
         # Collapse 1-edit neighbors of an already-kept intBC (drops FFH vs FFF).
-        edit_distance_cutoff_phase_2=2,
+        edit_distance_cutoff_phase_2=1,
     ).clone_call
     _check_are_clones(
         clone_call=clone_call,
