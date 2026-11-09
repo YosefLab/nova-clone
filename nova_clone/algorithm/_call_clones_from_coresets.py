@@ -58,7 +58,7 @@ def call_clones_from_coresets(
     min_overlap_for_assigning_cellbc: int,
     min_intbc_counts_for_adding_intbc_to_clone_intbc_set: int,
     min_intbc_fraction_for_adding_to_clone_intbc_set: float,
-    min_edit_distance_for_adding_to_clone_intbc_set: int,
+    edit_distance_cutoff: int,
     custom_intbc_filtering_function: str,
 ) -> CallClonesFromCoresetsReturnType:
     """
@@ -140,7 +140,7 @@ def call_clones_from_coresets(
                 close_kept_intbcs = [
                     kept_intbc
                     for (kept_intbc, d) in ds.items()
-                    if d < min_edit_distance_for_adding_to_clone_intbc_set
+                    if d < edit_distance_cutoff
                 ]
                 if len(close_kept_intbcs) == 0:
                     # If it meets the fraction & count cutoff, we keep it
@@ -221,7 +221,7 @@ def test_call_clones_from_coresets():
         min_overlap_for_assigning_cellbc=1,
         min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
         min_intbc_fraction_for_adding_to_clone_intbc_set=0.0,
-        min_edit_distance_for_adding_to_clone_intbc_set=0,
+        edit_distance_cutoff=0,
         custom_intbc_filtering_function=lambda intbc: False,
     )
     assert out.total_time >= 0.0
