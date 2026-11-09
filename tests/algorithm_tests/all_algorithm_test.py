@@ -15,6 +15,66 @@ from nova_clone.algorithm._prune_low_cellbc_count_intbcs import *
 from nova_clone.algorithm._prune_low_umi_count_intbcs import *
 from nova_clone.algorithm._types import *
 from nova_clone.algorithm.cassiopeia._call_lineage_groups import *
+from nova_clone.algorithm._clone_calling_algorithm import _check_are_clones
+
+
+def test_recursive_clone_calling_algorithm_cellbc_collision_across_samples():
+    """
+    CellBCs are only unique within a sample. Here, both samples use the same
+    cellBCs but for cells of different clones. The recursive call on a clone
+    must only include that clone's cells, and not cells from other samples
+    that happen to share a cellBC with them.
+    """
+    s1_rows = []
+    for cellbc, subclone_intbc in [
+        ("cellBC_1", "CCC"),
+        ("cellBC_2", "CCC"),
+        ("cellBC_3", "DDD"),
+        ("cellBC_4", "DDD"),
+    ]:
+        for intbc in ["AAA", "BBB", subclone_intbc]:
+            s1_rows.append([cellbc, intbc, 40])
+    s2_rows = [
+        [cellbc, intbc, 40]
+        for cellbc in ["cellBC_1", "cellBC_2", "cellBC_3", "cellBC_4"]
+        for intbc in ["EEE", "FFF", "GGG"]
+    ]
+    columns = ["cellBC", "intBC", "UMI_count"]
+
+    clone_call_namedtuple = clone_calling_algorithm(
+        intbc_table_per_sample={
+            "s1": pd.DataFrame(data=s1_rows, columns=columns),
+            "s2": pd.DataFrame(data=s2_rows, columns=columns),
+        },
+        min_intbc_cellbc_count=1,
+        edit_distance_cutoff=0,
+        min_cells_assigned=1,
+        recursive=True,
+        recursive_min_cells_assigned=2,
+    )
+    clone_call = clone_call_namedtuple.clone_call
+    _check_are_clones(
+        clone_call=clone_call,
+        expected_clones=[
+            ["s1_cellBC_1", "s1_cellBC_2", "s1_cellBC_3", "s1_cellBC_4"],
+            ["s2_cellBC_1", "s2_cellBC_2", "s2_cellBC_3", "s2_cellBC_4"],
+        ],
+    )
+    s1_clone = next(iter(clone_call.cell_to_clones_mapping["s1_cellBC_1"]))
+    _check_are_clones(
+        clone_call=clone_call_namedtuple.recursive_clone_call[s1_clone].clone_call,
+        expected_clones=[
+            ["s1_cellBC_1", "s1_cellBC_2"],
+            ["s1_cellBC_3", "s1_cellBC_4"],
+        ],
+    )
+    assert clone_call_namedtuple.recursive_clone_call_integration_hierarchy[s1_clone] == (
+        {"AAA", "BBB"},
+        {
+            "clone_0": ({"CCC"}, None),
+            "clone_1": ({"DDD"}, None),
+        },
+    )
 
 
 def test_recursive_clone_call_when_clone_intbc_graph_starts_disconnected(monkeypatch):

@@ -621,7 +621,11 @@ def clone_calling_algorithm(
             print(f"Recursively calling clones on clone: {clone} ...")
 
             cells_in_clone = sorted(list(clone_call.clone_to_cells_mapping[clone]))
-            cells_in_clone = ["_".join(x.split("_")[1:]) for x in cells_in_clone]
+            # A clone may span multiple samples, but cellBCs are only unique within a sample.
+            cells_in_clone_per_sample = defaultdict(set)
+            for cell in cells_in_clone:
+                sample, cellbc = cell.split("_", 1)
+                cells_in_clone_per_sample[sample].add(cellbc)
 
             # Since we are going to be popping intBCs until the graph disconnects,
             # we better start with a connected graph. This is ensured by the coresets.
@@ -651,7 +655,7 @@ def clone_calling_algorithm(
                 sample: intbc_table.drop(
                     intbc_table[
                         (~intbc_table["intBC"].isin(intbc_set_to_disconnect))
-                        | (~intbc_table["cellBC"].isin(cells_in_clone))
+                        | (~intbc_table["cellBC"].isin(cells_in_clone_per_sample[sample]))
                     ].index
                 )
                 for sample, intbc_table in original_intbc_table_per_sample.items()
@@ -759,7 +763,7 @@ def clone_calling_algorithm(
                 sample: intbc_table.drop(
                     intbc_table[
                         (intbc_table["intBC"].isin(progenitor_intbc_set))
-                        | (~intbc_table["cellBC"].isin(cells_in_clone))
+                        | (~intbc_table["cellBC"].isin(cells_in_clone_per_sample[sample]))
                     ].index
                 )
                 for sample, intbc_table in original_intbc_table_per_sample.items()
@@ -797,8 +801,8 @@ def clone_calling_algorithm(
             )
             uniquely_mapped_cells_in_recursive_clone_call = sum(
                 [
-                    len(cells_in_clone)
-                    for cells_in_clone in recursive_clone_call__for_this_clone.clone_call.clone_to_cells_mapping.values()
+                    len(cells_in_subclone)
+                    for cells_in_subclone in recursive_clone_call__for_this_clone.clone_call.clone_to_cells_mapping.values()
                 ]
             )
             fraction_uniquely_mapped_cells_in_recursive_clone_call = (
