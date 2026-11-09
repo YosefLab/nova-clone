@@ -301,20 +301,16 @@ def clone_calling_algorithm(
             `True` will be discarded.
         min_intbc_cellbc_count: IntBCs appearing in less than this number of
             cellBCs will be discarded.
-        edit_distance_cutoff: Minimum *allowed* edit distance. E.g. if you expect there to
-            exist sequencing errors at edit distance 3 but not 4, please set this to 4.
+        edit_distance_cutoff: Edit distance cutoff. E.g. if you expect there to
+            exist sequencing errors at edit distance 4 but not 5, please set this to 4.
             To be precise about how this is used: When building clonal signatures (phase 1 of
             the algorithm), we identify putative sequencing errors by checking for
             intBCs `x` frequently co-occurring with another (more frequent) intBC
             `y` at an edit distance <= edit_distance_cutoff. If so, we remove `x`.
-            In the second phase of the algorithm, when we reconstruct
-            the intBC set for each clone de novo, we require that the edit distance
-            to any other more abundant intBC is >= edit_distance_cutoff.
-            Note that our cutoff for phase 1 is extra stringent to be extra safe, since
-            sequencing error in phase 1 have a bigger consequence (overmerging clones) than
-            in phase 2 (just getting some aliased characters which will likely get dropped
-            due to low frequency via `min_intbc_fraction` anyway). We allow setting the
-            cutoff for phase 2 differently with `edit_distance_cutoff_phase_2`.
+            Similarly, in the second phase of the algorithm, when we reconstruct
+            the intBC set for each clone de novo, we discard each intBC with an
+            edit distance <= edit_distance_cutoff to some other intBC in the intBC set.
+            We allow setting the cutoff for phase 2 differently with `edit_distance_cutoff_phase_2`.
         min_cells_assigned: Coresets with less than this number of mapped cells
             will be dropped. If you wish to recover smaller clones, you can lower
             this, however, note that since all \intBCs are supported by at least
