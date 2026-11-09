@@ -29,6 +29,7 @@ from ._prune_low_cellbc_count_intbcs import prune_low_cellbc_count_intbcs
 from ._prune_low_umi_count_intbcs import prune_low_umi_count_intbcs
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
+from ._recursive_utils import subset_intbc_graph, infer_progenitor_intbc_set_by_popping
 
 
 def _init_logger():
@@ -73,111 +74,6 @@ class CloneCallingAlgorithmReturnType(NamedTuple):
     recursive_clone_call_integration_hierarchy: Any = None
     total_time: Optional[float] = None
     metadata: Any = None
-
-
-def _is_connected(intbc_graph: GraphType) -> bool:
-    """
-    Returns True if the graph is connected, False otherwise.
-    """
-    if len(intbc_graph[1]) == 0:
-        return True
-    edge_counts, node_counts = intbc_graph
-    visited = {node: False for node in node_counts}
-
-    def _dfs(node):
-        visited[node] = True
-        for neighbor in edge_counts[node]:
-            if not visited[neighbor]:
-                _dfs(neighbor)
-
-    _dfs(next(iter(node_counts)))
-    return all(visited.values())
-
-
-def test__is_connected():
-    intbc_graph = (
-        {
-            "CCC": {"AAA": 5, "BBB": 5},
-            "AAA": {"CCC": 5, "BBB": 10, "DDD": 5},
-            "BBB": {"CCC": 5, "AAA": 10, "DDD": 5},
-            "DDD": {"AAA": 5, "BBB": 5},
-        },
-        {"CCC": 5, "AAA": 10, "BBB": 10, "DDD": 5},
-    )
-    assert _is_connected(intbc_graph)
-
-
-def test__empty_is_connected():
-    intbc_graph = ({}, {})
-    assert _is_connected(intbc_graph)
-
-
-def test__is_connected_2():
-    intbc_graph = ({"CCC": {}, "DDD": {}}, {"CCC": 5, "DDD": 5})
-    assert not _is_connected(intbc_graph)
-
-
-def _pop_highest_frequency_vertex(
-    intbc_graph: GraphType,
-) -> Tuple[IntBCType, GraphType]:
-    """
-    Pop the highest frequency vertex from the graph.
-    """
-    edge_counts, node_counts = intbc_graph
-    if not node_counts:
-        raise ValueError("The graph is empty.")
-    highest_frequency_vertex = max(node_counts, key=node_counts.get)
-    new_node_counts = {
-        node: count
-        for node, count in node_counts.items()
-        if node != highest_frequency_vertex
-    }
-    new_edge_counts = {
-        node: {
-            neighbor: count
-            for neighbor, count in neighbors.items()
-            if neighbor != highest_frequency_vertex
-        }
-        for node, neighbors in edge_counts.items()
-        if node != highest_frequency_vertex
-    }
-    return highest_frequency_vertex, (new_edge_counts, new_node_counts)
-
-
-def test__pop_highest_frequency_vertex():
-    intbc_graph = (
-        {
-            "CCC": {"AAA": 5, "BBB": 5},
-            "AAA": {"CCC": 5, "BBB": 10, "DDD": 5},
-            "BBB": {"CCC": 5, "AAA": 10, "DDD": 5},
-            "DDD": {"AAA": 5, "BBB": 5},
-        },
-        {"CCC": 5, "AAA": 11, "BBB": 10, "DDD": 6},
-    )
-    intbc, new_intbc_graph = _pop_highest_frequency_vertex(intbc_graph)
-    assert new_intbc_graph == (
-        {"CCC": {"BBB": 5}, "BBB": {"CCC": 5, "DDD": 5}, "DDD": {"BBB": 5}},
-        {"CCC": 5, "BBB": 10, "DDD": 6},
-    )
-    assert intbc == "AAA"
-    intbc, new_intbc_graph = _pop_highest_frequency_vertex(new_intbc_graph)
-    assert new_intbc_graph == ({"CCC": {}, "DDD": {}}, {"CCC": 5, "DDD": 6})
-    assert intbc == "BBB"
-    intbc, new_intbc_graph = _pop_highest_frequency_vertex(new_intbc_graph)
-    assert new_intbc_graph == ({"CCC": {}}, {"CCC": 5})
-    assert intbc == "DDD"
-    intbc, new_intbc_graph = _pop_highest_frequency_vertex(new_intbc_graph)
-    assert new_intbc_graph == ({}, {})
-    assert intbc == "CCC"
-
-
-def test__pop_highest_frequency_vertex_raises():
-    intbc_graph = ({}, {})
-    try:
-        _pop_highest_frequency_vertex(intbc_graph)
-        assert False
-    except ValueError:
-        assert True
 
 
 def _is_empty(intbc_table_per_sample_for_clone):
@@ -612,7 +508,10 @@ def clone_calling_algorithm(
     # signature, leading to a clone with empty intBC set.
     clone_call = remove_empty_clones(clone_call)
 
-    # Call recursively on each clone, if requested.
+    print("********************************************************************")
+    print("****** Recurse if requested to estimate integration hierarchy ******")
+    print("********************************************************************")
+
     if recursive:
         recursive_clone_call = {}
         recursive_clone_call_integration_hierarchy = {}
@@ -625,114 +524,24 @@ def clone_calling_algorithm(
 
             # Since we are going to be popping intBCs until the graph disconnects,
             # we better start with a connected graph. This is ensured by the coresets.
-            # Specifically, we consider the pruned coresets (which are dealized), and
+            # Specifically, we consider the pruned coresets (which are dealiased), and
             # not the disjointed ones (since the disjointed ones lose homoplastic intBCs).
             clone_id = int(clone[len("clone_") :])
-            pruned_coreset_for_clone = pruned_coresets[clone_id]
-            disjoint_coreset_for_clone = disjoint_coresets[clone_id]
-            assert all(
-                [
-                    intbc in pruned_coreset_for_clone
-                    for intbc in disjoint_coreset_for_clone
-                ]
+            pruned_set_for_clone = set(pruned_coresets[clone_id])  # Cast to set bc of multiset case.
+            subsetted_intbc_graph = subset_intbc_graph(
+                intbc_graph=intbc_graph,
+                nodes_to_keep=sorted(list(set(pruned_set_for_clone))),
             )
+            inferred_progenitor_intbc_set = infer_progenitor_intbc_set_by_popping(
+                subsetted_intbc_graph=subsetted_intbc_graph,
+            )
+            all_intbcs_popped = sorted(list(inferred_progenitor_intbc_set)) == sorted(list(pruned_set_for_clone))
             clone_intbc_set = clone_call.clone_intbc_sets[clone]
-            del disjoint_coreset_for_clone
-            intbc_set_to_disconnect = set(
-                [x for x in pruned_coreset_for_clone if x in clone_intbc_set]
-            )
-
-            # Phase 1: Identify the progenitor intBC set.
-            # We first subset the intbc table to the cells in this clone,
-            # and to the intBCs in this clone (since we know they are high
-            # quality intBCs at this point, i.e. they do not contain sequencing
-            # errors nor homoplastic intBCs).
-            intbc_table_per_sample_for_clone = {
-                sample: intbc_table.drop(
-                    intbc_table[
-                        (~intbc_table["intBC"].isin(intbc_set_to_disconnect))
-                        | (~intbc_table["cellBC"].isin(cells_in_clone))
-                    ].index
-                )
-                for sample, intbc_table in original_intbc_table_per_sample.items()
-            }
-            if _is_empty(intbc_table_per_sample_for_clone):
-                logger.info(
-                    "intbc_table_per_sample_for_clone empty (case #1). Not recursing on clone."
-                )
-                recursive_clone_call[clone] = None
-                recursive_clone_call_integration_hierarchy[clone] = (
-                    clone_intbc_set,  # Note that we use the clone intBC set, to make sure we include everything.
-                    None,
-                )
-                continue
-            # Filter intBCs based on min_intbc_umi_count
-            intbc_table_per_sample_for_clone = prune_low_umi_count_intbcs(
-                intbc_table_per_sample=intbc_table_per_sample_for_clone,
-                min_intbc_umi_count=min_intbc_umi_count,
-            ).intbc_table_per_sample
-            if _is_empty(intbc_table_per_sample_for_clone):
-                logger.info(
-                    "intbc_table_per_sample_for_clone empty (case #2). Not recursing on clone."
-                )
-                recursive_clone_call[clone] = None
-                recursive_clone_call_integration_hierarchy[clone] = (
-                    clone_intbc_set,  # Note that we use the clone intBC set, to make sure we include everything.
-                    None,
-                )
-                continue
-            # Filter intBCs based on `custom_intbc_filtering_function`
-            intbc_table_per_sample_for_clone = prune_custom_intbcs(
-                intbc_table_per_sample=intbc_table_per_sample_for_clone,
-                custom_intbc_filtering_function=custom_intbc_filtering_function,
-            ).intbc_table_per_sample
-            if _is_empty(intbc_table_per_sample_for_clone):
-                logger.info(
-                    "intbc_table_per_sample_for_clone empty (case #3). Not recursing on clone."
-                )
-                recursive_clone_call[clone] = None
-                recursive_clone_call_integration_hierarchy[clone] = (
-                    clone_intbc_set,  # Note that we use the clone intBC set, to make sure we include everything.
-                    None,
-                )
-                continue
-            # Filter intBCs based on `min_intbc_cellbc_count`
-            intbc_table_per_sample_for_clone = prune_low_cellbc_count_intbcs(
-                intbc_table_per_sample=intbc_table_per_sample_for_clone,
-                min_intbc_cellbc_count=min_intbc_cellbc_count,
-            ).intbc_table_per_sample
-            if _is_empty(intbc_table_per_sample_for_clone):
-                logger.info(
-                    "intbc_table_per_sample_for_clone empty (case #4). Not recursing on clone."
-                )
-                recursive_clone_call[clone] = None
-                recursive_clone_call_integration_hierarchy[clone] = (
-                    clone_intbc_set,  # Note that we use the clone intBC set, to make sure we include everything.
-                    None,
-                )
-                continue
-            # Build intBC graph
-            intbc_graph_for_clone = build_intbc_graph(
-                intbc_table_per_sample=intbc_table_per_sample_for_clone,
-            ).intbc_graph
-            # Keep reliable edges only
-            intbc_graph_for_clone = keep_reliable_edges(
-                intbc_graph=intbc_graph_for_clone,
-                ratio_cutoff=_reliable_edges_step__ratio_cutoff,
-            ).intbc_graph
-            progenitor_intbc_set = set()
-            all_intbcs_popped = False
-            while _is_connected(intbc_graph_for_clone):
-                if len(intbc_graph_for_clone[1]) == 0:
-                    # We have popped all the intBCs. I.e. there was no subclonal structure left.
-                    all_intbcs_popped = True
-                    break
-                intbc, intbc_graph_for_clone = _pop_highest_frequency_vertex(
-                    intbc_graph_for_clone
-                )
-                progenitor_intbc_set.add(intbc)
-            if all_intbcs_popped:
-                # There was no subclonal structure left.
+            if (all_intbcs_popped or len(inferred_progenitor_intbc_set.intersection(clone_intbc_set)) == 0):
+                # Case 1 (all_intbcs_popped): There was no subclonal structure left.
+                # Case 2: We found some progenitors, but they were all filtered out in Phase 2 of the algorithm
+                # (e.g. border case where user set more aggressive edit distance thresholds for phase 2),
+                # so we choose not to recurse.
                 recursive_clone_call[clone] = None
                 recursive_clone_call_integration_hierarchy[clone] = (
                     clone_intbc_set,  # Note that we use the clone intBC set, to make sure we include everything.
@@ -746,7 +555,7 @@ def clone_calling_algorithm(
             # Therefore, unless the two (or more) components are aliased, we have a subclonal structure
             # which we are ready to uncover using the recursive call.
             logger.info(
-                f"Putative progenitor intBC set found (will proceed to call clones recursively excluding these intBCs): {progenitor_intbc_set}"
+                f"Putative progenitor intBC set found (will proceed to call clones recursively excluding these intBCs): {inferred_progenitor_intbc_set}"
             )
 
             # Phase 2: Remove progenitor intBC set, and call recursively.
@@ -758,7 +567,7 @@ def clone_calling_algorithm(
             intbc_table_per_sample_for_clone = {
                 sample: intbc_table.drop(
                     intbc_table[
-                        (intbc_table["intBC"].isin(progenitor_intbc_set))
+                        (intbc_table["intBC"].isin(inferred_progenitor_intbc_set))
                         | (~intbc_table["cellBC"].isin(cells_in_clone))
                     ].index
                 )
@@ -836,7 +645,7 @@ def clone_calling_algorithm(
                     )
                     recursive_clone_call[clone] = recursive_clone_call__for_this_clone
                     recursive_clone_call_integration_hierarchy[clone] = (
-                        progenitor_intbc_set,
+                        inferred_progenitor_intbc_set.intersection(clone_intbc_set),  # NOTE: The `inferred_progenitor_intbc_set` might have lost some intBCs in phase 2 of the algorithm due to user filters, so we retain only the intBCs that the user wants.
                         recursive_clone_call__for_this_clone.recursive_clone_call_integration_hierarchy,
                     )
                 else:
