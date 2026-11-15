@@ -288,6 +288,7 @@ def run_synthetic_data_creation(
         # generation_time: generation time parameter for the function of integration barcodes number
         min_cells_number_per_clone: minimum number of cells per clone
         min_barcodes_per_clone: minimum number of barcodes per clone
+        homoplasy_sigma: sigma of the lognormal copy number of each barcode in the library (0 = every barcode appears once, no homoplasy; higher = more barcodes with several copies, more homoplasy)
     """
     if tree_depth_range_min == 1:
         raise ValueError("tree_depth_range_min should be greater than 1")
@@ -401,8 +402,8 @@ def test_run_synthetic_data_creation_smoketest():
         decay_speed=1,
         min_cells_number_per_clone=2,
         percentage_of_barcodes_silenced_total=0.1,
+        homoplasy_sigma=1,
         min_barcodes_per_generation=10,
         minP=1,
         maxP=1,
-        homoplasy_sigma=1
     )

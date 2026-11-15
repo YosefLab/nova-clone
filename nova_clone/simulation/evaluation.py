@@ -72,7 +72,7 @@ def run_model_for_eval(
         clone_calling_results = clone_calling_algorithm(
             {"sample0": synthetic_data["counts_missing_data"]},
             recursive=True,
-            edit_distance_cutoff=2,
+            edit_distance_cutoff=2, ### 2 instead of default 4 because of simulation with 4 bases long barcodes.
         )
         recursive_clone_calling_results = clone_calling_results.recursive_clone_call
         clone_calling_results = clone_calling_results.clone_call
@@ -123,7 +123,7 @@ def run_model_for_eval(
             df=synthetic_data["counts_missing_data"],
             min_UMIs=10,  # min_intbc_umi_count
             min_ibtbc_per_clone=2, #_preliminary_coreset_building_step__min_coreset_size
-            min_cell_cluster_size=30, #min_cells_assigned
+            min_cell_cluster_size=10, #min_cells_assigned
             min_cells_with_intBC=10, #min_intbc_cellbc_count=10
             min_samples=30
         )

@@ -6,7 +6,7 @@ def clone_calling_pearson_hdbscan_by_intBC(
         df: pd.DataFrame, 
         min_UMIs:int = 10, 
         min_ibtbc_per_clone:int = 2, 
-        min_cell_cluster_size: int = 30,
+        min_cell_cluster_size: int = 10, # match nova-clone default
         min_cells_with_intBC:int = 10,
         min_samples: int = 30
     ) -> dict:
