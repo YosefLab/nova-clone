@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nova-clone"
+version = "0.1.0"
+description = "Clone calling algorithm and QC"
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "editdistance",
+    "matplotlib",
+    "multiset",
+    "networkx",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+benchmark = [
+    "cassiopeia-lineage",
+]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["nova_clone*"]
