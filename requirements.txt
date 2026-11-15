@@ -6,5 +6,6 @@ networkx
 numpy
 pandas
 pytest
+seaborn
 scikit-learn
 tqdm
