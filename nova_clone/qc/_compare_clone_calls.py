@@ -7,7 +7,6 @@ import tqdm
 
 from nova_clone.algorithm import clone_calling_algorithm
 from nova_clone.algorithm._types import CellBCType, CloneType
-from nova_clone.algorithm.cassiopeia import call_lineage_groups
 
 
 def get_clones_and_sizes_from_cell_to_clones_mapping(
@@ -202,9 +201,12 @@ def test_qc_compare_clone_calls():
         edit_distance_cutoff=0,
         min_cells_assigned=1,
     ).clone_call
-    clone_call_2 = call_lineage_groups(
+    clone_call_2 = clone_calling_algorithm(
         intbc_table_per_sample={"sample1": intbc_table},
-    )
+        min_intbc_cellbc_count=1,
+        edit_distance_cutoff=1,
+        min_cells_assigned=1,
+    ).clone_call
     qc_compare_clone_calls__overlap_matrix(
         clone_call_1.cell_to_clones_mapping, clone_call_2.cell_to_clones_mapping
     )

@@ -1,10 +1,11 @@
 editdistance
+ipython
 matplotlib
 multiset
 networkx
 numpy
 pandas
 pytest
+seaborn
 scikit-learn
 tqdm
-git+https://github.com/YosefLab/Cassiopeia@master#egg=cassiopeia-lineage

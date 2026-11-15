@@ -1324,9 +1324,6 @@ def test_recursive_clone_calling_algorithm_on_real_data():
 
 
 def test_clone_calling_algorithm_doublet():
-    """
-    We check that cassiopeia can find the doublet.
-    """
     ncells_per_clone = 100
     intbc_table = pd.DataFrame(
         data=[[f"cellBC_{i}", "AAA", 40] for i in range(ncells_per_clone)]
