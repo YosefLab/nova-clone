@@ -6,25 +6,11 @@ in some clone.
 The main function exposed by this module is `keep_reliable_edges`.
 """
 
-import logging
-import sys
 import time
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class KeepReliableEdgesReturnType(NamedTuple):
@@ -59,7 +45,6 @@ def keep_reliable_edges(
             be kept.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to keep_reliable_edges ...")
     edge_counts, intbc_counts = intbc_graph
     pruned_edge_counts = {intbc: defaultdict(int) for intbc in intbc_counts}

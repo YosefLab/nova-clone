@@ -4,25 +4,11 @@ This module implements filtering of intBCs based on UMI counts.
 The main function exposed by this module is `prune_low_umi_count_intbcs`.
 """
 
-import logging
-import sys
 import time
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class PruneLowUMICountIntBCsReturnType(NamedTuple):
@@ -47,17 +33,20 @@ class PruneLowUMICountIntBCsReturnType(NamedTuple):
 def prune_low_umi_count_intbcs(
     intbc_table_per_sample: Dict[SampleNameType, IntBCTableType],
     min_intbc_umi_count: int,
+    validate: bool = True,
 ) -> PruneLowUMICountIntBCsReturnType:
     """
     Prunes away all intBCs with low UMI counts.
 
     This is effective at getting rid of background RNA contaminants and many
     (but not all) sequencing errors.
+
+    Set ``validate=False`` when the caller has already validated the tables.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to prune_low_umi_count_intbcs ...")
-    validate_intbc_table_per_sample(intbc_table_per_sample)
+    if validate:
+        validate_intbc_table_per_sample(intbc_table_per_sample)
     new_intbc_table_per_sample = {}
     for sample_name, intbc_table in intbc_table_per_sample.items():
         new_intbc_table = intbc_table[
@@ -71,7 +60,6 @@ def prune_low_umi_count_intbcs(
         intbc_table.shape[0] for intbc_table in new_intbc_table_per_sample.values()
     )
     fraction_discarded_intbcs = numerator / (denominator + 1e-9)
-    validate_intbc_table_per_sample(new_intbc_table_per_sample)
     total_time = time.time() - st
     res = PruneLowUMICountIntBCsReturnType(
         intbc_table_per_sample=new_intbc_table_per_sample,

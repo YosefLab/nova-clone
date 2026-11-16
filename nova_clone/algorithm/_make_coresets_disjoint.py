@@ -4,27 +4,13 @@ Module for removing homoplastic intBCs from the coresets, thus making then disjo
 The main function exposed by this module is `make_coresets_disjoint`.
 """
 
-import logging
-import sys
 import time
 
 from multiset import Multiset
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class MakeCoresetsDisjointReturnType(NamedTuple):
@@ -48,7 +34,6 @@ def make_coresets_disjoint(
     coresets.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to make_coresets_disjoint ...")
     intbc_counts = defaultdict(int)
     for coreset in coresets:
@@ -104,7 +89,7 @@ def test_make_coresets_disjoint_with_multisets():
     coresets_disjoint = make_coresets_disjoint(
         coresets=coresets,
     ).coresets
-    print(f"coresets_disjoint = {coresets_disjoint}")
+    logger.info(f"coresets_disjoint = {coresets_disjoint}")
     assert coresets_disjoint == [
         {"1", "2"},
         {"4", "5"},

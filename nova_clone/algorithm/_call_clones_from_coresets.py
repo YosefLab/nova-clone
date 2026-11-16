@@ -9,33 +9,14 @@ import time
 import editdistance
 import numpy as np
 import pandas as pd
-import tqdm
 
 from ._compute_cellbc_vs_coreset_overlap_matrix import (
     compute_cellbc_vs_coreset_overlap_matrix,
 )
+from ._logging import tqdm
 from ._prune_low_umi_count_intbcs import prune_low_umi_count_intbcs
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
-
-import logging
-import sys
-
-from ._types import *
-
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
 
 
 class CallClonesFromCoresetsReturnType(NamedTuple):
@@ -60,26 +41,30 @@ def call_clones_from_coresets(
     min_intbc_fraction_for_adding_to_clone_intbc_set: float,
     edit_distance_cutoff: int,
     custom_intbc_filtering_function: str,
+    validate: bool = True,
 ) -> CallClonesFromCoresetsReturnType:
     """
     Call clones given the coresets characterizing each clone.
+
+    Set ``validate=False`` when the caller has already validated the tables.
     """
     st = time.time()
 
-    # Validate arguments
-    validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
+    if validate:
+        validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
 
-    # Filter intBCs based on min_intbc_umi_count
-    all_cellbc = set(
-        list(
-            _cell_intbc_sets_from_intbc_tables(
-                intbc_table_per_sample=intbc_table_per_sample
-            ).keys()
-        )
-    )
+    # Remember pre-prune cellBCs so cells that lose all intBCs to UMI filtering
+    # still appear in the output mappings. Only the keys are needed here - avoid
+    # building full cell <-> intBC sets twice.
+    all_cellbc = {
+        f"{sample_name}_{cellbc}"
+        for sample_name, intbc_table in intbc_table_per_sample.items()
+        for cellbc in intbc_table["cellBC"].unique()
+    }
     intbc_table_per_sample = prune_low_umi_count_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
-        min_intbc_umi_count=min_intbc_umi_count
+        min_intbc_umi_count=min_intbc_umi_count,
+        validate=False,
     ).intbc_table_per_sample
     cell_intbc_sets = _cell_intbc_sets_from_intbc_tables(
         intbc_table_per_sample=intbc_table_per_sample,
@@ -94,6 +79,8 @@ def call_clones_from_coresets(
     num_clones = cellbc_vs_coreset_overlap_matrix.shape[1]
     num_cells = cellbc_vs_coreset_overlap_matrix.shape[0]
     assert len(cells) == num_cells
+    # Use a numpy view for assignment to avoid per-cell pandas Series overhead.
+    overlap_matrix = cellbc_vs_coreset_overlap_matrix.to_numpy()
 
     # First compute clone_intbc_counts by using the confidently mapped cells.
     clone_intbc_counts = {
@@ -102,12 +89,9 @@ def call_clones_from_coresets(
     clone_mapping = {cell: {} for cell in cell_intbc_sets}
     clone_to_cells_mapping = {clone_idx: set() for clone_idx in range(num_clones)}
     clone_sizes = defaultdict(int)
-    for cell in tqdm.tqdm(cells):
+    for cell_idx, cell in enumerate(tqdm(cells)):
         clones_assigned = list(
-            np.where(
-                cellbc_vs_coreset_overlap_matrix.loc[cell, :]
-                >= min_overlap_for_assigning_cellbc
-            )[0]
+            np.where(overlap_matrix[cell_idx] >= min_overlap_for_assigning_cellbc)[0]
         )
         clone_mapping[cell] = set(clones_assigned)
         if len(clones_assigned) == 1:
@@ -121,7 +105,7 @@ def call_clones_from_coresets(
     # Now it's time to figure out the intBC sets of each clone from their intBC
     # counts
     clone_intbc_sets = {}
-    for clone_idx in tqdm.tqdm(range(num_clones)):
+    for clone_idx in tqdm(range(num_clones)):
         clone_size = clone_sizes[clone_idx]
         kept_intbcs = []
         intbc_counts = sorted(
@@ -162,7 +146,7 @@ def call_clones_from_coresets(
     # cell intBC sets (simply by intersection)
     observed_cell_intbc_sets = cell_intbc_sets
     cell_intbc_sets = {}
-    for cell, clones in tqdm.tqdm(clone_mapping.items()):
+    for cell, clones in tqdm(clone_mapping.items()):
         observed = observed_cell_intbc_sets[cell]
         if len(clones) != 1:
             # We did not confidently map the cell, so we just drop all intBCs

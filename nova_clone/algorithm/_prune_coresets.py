@@ -4,27 +4,13 @@ Module for pruning aliased coresets.
 The main function exposed by this module is `prune_coresets`.
 """
 
-import logging
-import sys
 import time
 
 import numpy as np
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class PruneCoresetsReturnType(NamedTuple):
@@ -61,7 +47,6 @@ def prune_coresets(
     Returns the new list of coresets.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to prune_coresets ...")
     num_coresets = coreset_co_assignment_matrix.shape[0]
     res = []

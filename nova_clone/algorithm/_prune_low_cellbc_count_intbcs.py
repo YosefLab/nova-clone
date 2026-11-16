@@ -4,25 +4,11 @@ This module implements filtering of intBCs based on cellBC counts.
 The main function exposed by this module is `prune_low_cellbc_count_intbcs`.
 """
 
-import logging
-import sys
 import time
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class PruneLowCellBCCountIntBCsReturnType(NamedTuple):
@@ -46,21 +32,22 @@ class PruneLowCellBCCountIntBCsReturnType(NamedTuple):
 def prune_low_cellbc_count_intbcs(
     intbc_table_per_sample: Dict[SampleNameType, IntBCTableType],
     min_intbc_cellbc_count: int,
+    validate: bool = True,
 ) -> PruneLowCellBCCountIntBCsReturnType:
     """
     Prunes away all intBCs appearing in to few cellBCs.
 
     This is effective at getting rid of many (but not all) sequencing errors.
+
+    Set ``validate=False`` when the caller has already validated the tables.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info(f"Going to prune_low_cellbc_count_intbcs ...")
-    validate_intbc_table_per_sample(intbc_table_per_sample)
+    if validate:
+        validate_intbc_table_per_sample(intbc_table_per_sample)
 
     all_intbc_tables_concatenated = pd.concat(intbc_table_per_sample.values())
-    cellbc_counts = all_intbc_tables_concatenated.groupby("intBC").apply(
-        lambda df: df.shape[0]
-    )
+    cellbc_counts = all_intbc_tables_concatenated.groupby("intBC").size()
     allowed_intbcs = set(cellbc_counts[cellbc_counts >= min_intbc_cellbc_count].index)
 
     new_intbc_table_per_sample = {}
@@ -77,7 +64,6 @@ def prune_low_cellbc_count_intbcs(
         intbc_table.shape[0] for intbc_table in new_intbc_table_per_sample.values()
     )
     fraction_discarded_intbcs = numerator / (denominator + 1e-9)
-    validate_intbc_table_per_sample(new_intbc_table_per_sample)
     total_time = time.time() - st
     res = PruneLowCellBCCountIntBCsReturnType(
         intbc_table_per_sample=new_intbc_table_per_sample,

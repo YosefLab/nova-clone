@@ -5,31 +5,16 @@ and coresets.
 The main function exposed by this module is `compute_cellbc_vs_coreset_overlap_matrix`.
 """
 
-import logging
-import sys
 import time
 from typing import *
 
 from multiset import Multiset
 import numpy as np
-import tqdm
 
 from ._types import *
-from ._utils import _cell_intbc_sets_from_intbc_tables
+from ._utils import _cell_coreset_overlap
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger, tqdm
 
 
 class ComputeCellBCvsCoresetOverlapMatrixReturnType(NamedTuple):
@@ -57,16 +42,16 @@ def compute_cellbc_vs_coreset_overlap_matrix(
     Entry (i, j) contains the overlap of cell i's intBC set with coreset j.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to compute_cellbc_vs_coreset_overlap_matrix ...")
     cells = sorted(cellbc_intbc_sets.keys())
     res_array = np.zeros(shape=(len(cells), len(coresets)))
 
-    for cell_idx, cell in tqdm.tqdm(list(enumerate(cells))):
+    for cell_idx, cell in tqdm(list(enumerate(cells))):
         cell_intbc_set = cellbc_intbc_sets[cell]
         for coreset_idx, coreset in enumerate(coresets):
-            overlap = len([intbc for intbc in coreset if intbc in cell_intbc_set])  # Handles multiset coresets (for single-intBC support)
-            res_array[cell_idx, coreset_idx] = overlap
+            res_array[cell_idx, coreset_idx] = _cell_coreset_overlap(
+                cell_intbc_set, coreset
+            )
 
     cellbc_vs_coreset_overlap_matrix = pd.DataFrame(
         res_array,

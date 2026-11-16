@@ -4,8 +4,6 @@ Module for the clone calling algorithm.
 The main function exposed by this module is the `clone_calling_algorithm`.
 """
 
-import logging
-import sys
 import time
 from collections import defaultdict
 from copy import deepcopy
@@ -30,19 +28,7 @@ from ._prune_low_umi_count_intbcs import prune_low_umi_count_intbcs
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger, logging_verbosity
 
 
 class CloneCallingAlgorithmReturnType(NamedTuple):
@@ -271,6 +257,7 @@ def clone_calling_algorithm(
     recursive_min_cells_assigned: int = 10,
     # Single-intBC clone recovery
     recover_single_intbc_clones: bool = False,
+    verbose: bool = True,
     ##### Private parameters (we do not expect the user to ever have to change these) #####
     _sequencing_error_pruning_step__co_occurrence_cutoff: float = 0.5,
     _homoplastic_pruning_step__p_max_cutoff: float = 0.5,
@@ -365,6 +352,7 @@ def clone_calling_algorithm(
             available, we recommend using these to confirm that the single-intBC
             clones are high quality, and if there is overmerging we recommend
             splitting into different clones based on evolving lineage marks.
+        verbose: If False, silence all algorithm logging output for this call.
         _sequencing_error_pruning_step__co_occurrence_cutoff: This establishes
             how frequently intBC `x` needs to co-occur with intBC `y` having a
             similar sequence (as determined by the edit_distance_cutoff above)
@@ -460,6 +448,65 @@ def clone_calling_algorithm(
         NOTE: the cellBCs are prefixed with the sample name in the `results` (to avoid
         cellBC collision between different samples.)
     """
+    with logging_verbosity(verbose):
+        return _clone_calling_algorithm(
+            intbc_table_per_sample=intbc_table_per_sample,
+            min_intbc_umi_count=min_intbc_umi_count,
+            custom_intbc_filtering_function=custom_intbc_filtering_function,
+            min_intbc_cellbc_count=min_intbc_cellbc_count,
+            edit_distance_cutoff=edit_distance_cutoff,
+            min_cells_assigned=min_cells_assigned,
+            min_intbc_fraction=min_intbc_fraction,
+            edit_distance_cutoff_phase_2=edit_distance_cutoff_phase_2,
+            recursive=recursive,
+            recursive_min_fraction_uniquely_mapped_cells_to_recurse=recursive_min_fraction_uniquely_mapped_cells_to_recurse,
+            recursive_min_cells_assigned=recursive_min_cells_assigned,
+            recover_single_intbc_clones=recover_single_intbc_clones,
+            _sequencing_error_pruning_step__co_occurrence_cutoff=_sequencing_error_pruning_step__co_occurrence_cutoff,
+            _homoplastic_pruning_step__p_max_cutoff=_homoplastic_pruning_step__p_max_cutoff,
+            _reliable_edges_step__ratio_cutoff=_reliable_edges_step__ratio_cutoff,
+            _preliminary_coreset_building_step__min_coreset_size=_preliminary_coreset_building_step__min_coreset_size,
+            _preliminary_coreset_building_step__min_overlap_for_merging_coresets=_preliminary_coreset_building_step__min_overlap_for_merging_coresets,
+            _coreset_dealiasing_step__min_overlap_for_assigning_cellbc=_coreset_dealiasing_step__min_overlap_for_assigning_cellbc,
+            _coreset_dealiasing_step__co_occurrence_cutoff=_coreset_dealiasing_step__co_occurrence_cutoff,
+            _coreset_disjointing_step__make_disjoint=_coreset_disjointing_step__make_disjoint,
+            _final_cell_assignment_step__min_overlap_for_assigning_cellbc=_final_cell_assignment_step__min_overlap_for_assigning_cellbc,
+            _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set=_call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set,
+        )
+
+
+def _clone_calling_algorithm(
+    ##### Public parameters (defaults should work well on most datasets) #####
+    # Phase 1 parameters
+    intbc_table_per_sample: Dict[str, pd.DataFrame],
+    min_intbc_umi_count: int = 10,
+    custom_intbc_filtering_function: Callable[[str], bool] = lambda intbc: False,
+    min_intbc_cellbc_count: int = 10,
+    edit_distance_cutoff: int = 4,
+    # Phase 2 parameters
+    min_cells_assigned: int = 10,
+    min_intbc_fraction: float = 0.05,
+    edit_distance_cutoff_phase_2: Optional[int] = None, # If `None`, defaults to `edit_distance_cutoff` value
+    # Recursive step parameters
+    recursive: bool = False,
+    recursive_min_fraction_uniquely_mapped_cells_to_recurse: float = 0.7,
+    recursive_min_cells_assigned: int = 10,
+    # Single-intBC clone recovery
+    recover_single_intbc_clones: bool = False,
+    ##### Private parameters (we do not expect the user to ever have to change these) #####
+    _sequencing_error_pruning_step__co_occurrence_cutoff: float = 0.5,
+    _homoplastic_pruning_step__p_max_cutoff: float = 0.5,
+    _reliable_edges_step__ratio_cutoff: float = 0.5,
+    _preliminary_coreset_building_step__min_coreset_size: int = 2, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
+    _preliminary_coreset_building_step__min_overlap_for_merging_coresets: int = 2, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
+    _coreset_dealiasing_step__min_overlap_for_assigning_cellbc: int = 2, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
+    _coreset_dealiasing_step__co_occurrence_cutoff: float = 0.5, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
+    _coreset_disjointing_step__make_disjoint: bool = True, # Private parameter, not exposed to the user. Used for testing.
+    _final_cell_assignment_step__min_overlap_for_assigning_cellbc: int = 1, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
+    _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set: Optional[int] = None, # Private parameter, not exposed to the user. Used for testing.
+    _validate_inputs: bool = True, # Private parameter. Recursive calls skip re-validation.
+) -> CloneCallingAlgorithmReturnType:
+    """Implementation of clone_calling_algorithm (logging handled by the public wrapper)."""
     if recursive:
         if min_intbc_fraction > 0.05:
             raise ValueError("When using recursive mode, we recommend (and will enforce) using: min_intbc_fraction <= 0.05. Otherwise, the subclonal intBCs will be discarded and little recursive structure will be found.")
@@ -480,22 +527,20 @@ def clone_calling_algorithm(
         # check the post-QC plots closely.
         _homoplastic_pruning_step__p_max_cutoff = -1
 
-
     st = time.time()
-
-    logger = logging.getLogger(__name__)
-    print(
+    logger.info(
         "*********************************************************************************"
     )
-    print(
+    logger.info(
         '***** Phase 1 of algorithm: Construct clonal signatures (a.k.a. "coresets") *****'
     )
-    print(
+    logger.info(
         "*********************************************************************************"
     )
 
-    # Validate arguments
-    validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
+    # Validate arguments (skipped on recursive calls — schema already checked).
+    if _validate_inputs:
+        validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
     original_intbc_table_per_sample = deepcopy(
         intbc_table_per_sample
     )  # After identifying the coresets, we will use the original intBC tables to map cells to clones, call sequencing errors and homoplastic intBCs.
@@ -507,18 +552,21 @@ def clone_calling_algorithm(
     intbc_table_per_sample = prune_low_umi_count_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
         min_intbc_umi_count=min_intbc_umi_count,
+        validate=False,
     ).intbc_table_per_sample
 
     # Filter intBCs based on `custom_intbc_filtering_function`
     intbc_table_per_sample = prune_custom_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
         custom_intbc_filtering_function=custom_intbc_filtering_function,
+        validate=False,
     ).intbc_table_per_sample
 
     # Filter intBCs based on `min_intbc_cellbc_count`
     intbc_table_per_sample = prune_low_cellbc_count_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
         min_intbc_cellbc_count=min_intbc_cellbc_count,
+        validate=False,
     ).intbc_table_per_sample
 
     # Build the intBC graph.
@@ -586,9 +634,9 @@ def clone_calling_algorithm(
     else:
         disjoint_coresets = pruned_coresets
 
-    print("********************************************************************")
-    print("***** Phase 2 of algorithm: Call clones from clonal signatures *****")
-    print("********************************************************************")
+    logger.info("********************************************************************")
+    logger.info("***** Phase 2 of algorithm: Call clones from clonal signatures *****")
+    logger.info("********************************************************************")
 
     call_clones_from_coresets_return = call_clones_from_coresets(
         intbc_table_per_sample=original_intbc_table_per_sample,
@@ -599,6 +647,7 @@ def clone_calling_algorithm(
         min_intbc_fraction_for_adding_to_clone_intbc_set=min_intbc_fraction,
         edit_distance_cutoff=edit_distance_cutoff_phase_2,
         custom_intbc_filtering_function=custom_intbc_filtering_function,
+        validate=False,
     )
     clone_call = call_clones_from_coresets_return.clone_call
 
@@ -615,7 +664,7 @@ def clone_calling_algorithm(
         recursive_clone_call_integration_hierarchy = {}
         clones = list(clone_call.clone_to_cells_mapping.keys())
         for clone in clones:
-            print(f"Recursively calling clones on clone: {clone} ...")
+            logger.info(f"Recursively calling clones on clone: {clone} ...")
 
             cells_in_clone = sorted(list(clone_call.clone_to_cells_mapping[clone]))
             # A clone may span multiple samples
@@ -671,6 +720,7 @@ def clone_calling_algorithm(
             intbc_table_per_sample_for_clone = prune_low_umi_count_intbcs(
                 intbc_table_per_sample=intbc_table_per_sample_for_clone,
                 min_intbc_umi_count=min_intbc_umi_count,
+                validate=False,
             ).intbc_table_per_sample
             if _is_empty(intbc_table_per_sample_for_clone):
                 logger.info(
@@ -686,6 +736,7 @@ def clone_calling_algorithm(
             intbc_table_per_sample_for_clone = prune_custom_intbcs(
                 intbc_table_per_sample=intbc_table_per_sample_for_clone,
                 custom_intbc_filtering_function=custom_intbc_filtering_function,
+                validate=False,
             ).intbc_table_per_sample
             if _is_empty(intbc_table_per_sample_for_clone):
                 logger.info(
@@ -701,6 +752,7 @@ def clone_calling_algorithm(
             intbc_table_per_sample_for_clone = prune_low_cellbc_count_intbcs(
                 intbc_table_per_sample=intbc_table_per_sample_for_clone,
                 min_intbc_cellbc_count=min_intbc_cellbc_count,
+                validate=False,
             ).intbc_table_per_sample
             if _is_empty(intbc_table_per_sample_for_clone):
                 logger.info(
@@ -767,7 +819,7 @@ def clone_calling_algorithm(
                 )
                 for sample, intbc_table in original_intbc_table_per_sample.items()
             }
-            recursive_clone_call__for_this_clone = clone_calling_algorithm(
+            recursive_clone_call__for_this_clone = _clone_calling_algorithm(
                 intbc_table_per_sample=intbc_table_per_sample_for_clone,  # This no longer contains sequencing errors not homoplastic intBCs.
                 min_intbc_umi_count=min_intbc_umi_count,  # OK (still need it to discard intra-clone background RNA)
                 custom_intbc_filtering_function=custom_intbc_filtering_function,  # Doesn't matter (OK)
@@ -790,6 +842,7 @@ def clone_calling_algorithm(
                 recursive=True,
                 recursive_min_fraction_uniquely_mapped_cells_to_recurse=recursive_min_fraction_uniquely_mapped_cells_to_recurse,
                 recursive_min_cells_assigned=recursive_min_cells_assigned,
+                _validate_inputs=False,
             )
             # Check how many cells were mapped in the recursive clone call, to determine if we should retain the recursive split.
             num_subclones_found = len(
@@ -994,8 +1047,6 @@ def test_recursive_clone_calling_algorithm_mini():
        |    |
       ABC  ABD
     """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(0)
 
     intbc_table = pd.DataFrame(
         data=[
@@ -1077,7 +1128,7 @@ def test_recursive_clone_calling_algorithm_mini():
             ],
         ],
     )
-    print(
+    logger.info(
         f"clone_call_namedtuple.recursive_clone_call_integration_hierarchy = {clone_call_namedtuple.recursive_clone_call_integration_hierarchy}"
     )
     assert clone_call_namedtuple.recursive_clone_call_integration_hierarchy == {
@@ -1106,8 +1157,6 @@ def test_recursive_clone_calling_algorithm_larger():
        |    |
       ABC  ABD
     """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(0)
 
     n_cell_copies = 10
 
@@ -1212,7 +1261,7 @@ def test_recursive_clone_calling_algorithm_larger():
             + [f"sample1_cellBC_44_{i}" for i in range(n_cell_copies)]
         ],
     )
-    print(
+    logger.info(
         f"clone_call_namedtuple.recursive_clone_call_integration_hierarchy = {clone_call_namedtuple.recursive_clone_call_integration_hierarchy}"
     )
     assert clone_call_namedtuple.recursive_clone_call_integration_hierarchy == {

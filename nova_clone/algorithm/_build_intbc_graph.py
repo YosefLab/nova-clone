@@ -4,8 +4,6 @@ Module for building an IntBC graph from a list of intBC tables.
 The main function exposed by this module is `build_intbc_graph`.
 """
 
-import logging
-import sys
 import time
 from collections import defaultdict
 from typing import Set
@@ -13,19 +11,7 @@ from typing import Set
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class BuildIntBCGraphReturnType(NamedTuple):
@@ -54,7 +40,6 @@ def build_intbc_graph(
         intbc_graph: The intBC graph, of type GraphType.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to build_intbc_graph ...")
     edge_counts = defaultdict(lambda: defaultdict(int))
     node_counts = defaultdict(int)
@@ -62,12 +47,14 @@ def build_intbc_graph(
         intbc_table_per_sample=intbc_table_per_sample,
     )
     for cell_intbc_set in cell_intbc_sets.values():
-        for intbc_1 in cell_intbc_set:
+        # Iterate unordered pairs once, then mirror edges (avoids the O(k^2)
+        # double pass with self-skips).
+        intbcs = list(cell_intbc_set)
+        for i, intbc_1 in enumerate(intbcs):
             node_counts[intbc_1] += 1
-            for intbc_2 in cell_intbc_set:
-                if intbc_1 == intbc_2:
-                    continue
+            for intbc_2 in intbcs[i + 1 :]:
                 edge_counts[intbc_1][intbc_2] += 1
+                edge_counts[intbc_2][intbc_1] += 1
     # Make sure that intBCs with no neighbors are present in the edge dict!
     for intbc in node_counts:
         edge_counts[intbc]

@@ -17,31 +17,16 @@ The main function exposed by this module is `keep_reliable_edges`, and it finds
 maximal coresets in the intBC graph using the above two properties.
 """
 
-import logging
-import sys
 import time
-from typing import Set
+from typing import Set, Tuple
 
 from multiset import Multiset
 import networkx as nx
 import numpy as np
-import tqdm
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class FindMaximalCoresetsReturnType(NamedTuple):
@@ -57,43 +42,56 @@ class FindMaximalCoresetsReturnType(NamedTuple):
     total_time: float
 
 
+def _graph_type_to_nx(graph: GraphType) -> nx.Graph:
+    """Convert an undirected GraphType (symmetric edge_counts) to nx.Graph."""
+    edge_counts, node_counts = graph
+    G = nx.Graph()
+    G.add_nodes_from(node_counts.keys())
+    for x, neighbors in edge_counts.items():
+        for y in neighbors:
+            if x < y:
+                G.add_edge(x, y)
+    return G
+
+
+def _maximum_cliques_containing_node_from_maximal_cliques(
+    node: str,
+    maximal_cliques_containing_node: List[Tuple[str, ...]],
+) -> List[Tuple[str, ...]]:
+    """
+    Among maximal cliques containing ``node``, return the maximum-sized ones
+    (lexicographically sorted).
+    """
+    if len(maximal_cliques_containing_node) == 0:
+        return [tuple([node])]
+    max_clique_size = max(len(clique) for clique in maximal_cliques_containing_node)
+    maximum_cliques = [
+        clique
+        for clique in maximal_cliques_containing_node
+        if len(clique) == max_clique_size
+    ]
+    return sorted(maximum_cliques)
+
+
 def maximum_cliques_containing_node(
     graph: GraphType,
     node: str,
-) -> List[List[str]]:
+) -> List[Tuple[str, ...]]:
     """
     Find all maximum cliques containing the given node.
 
-    The `graph` must be a digraph.
+    The `graph` must be an undirected GraphType (symmetric edge_counts).
     """
-    # We need to create a nx.Graph to run the clique finding method.
-    edge_counts, node_counts = graph
-    neighboring_nodes = sorted(list(edge_counts[node].keys()))
-    if len(neighboring_nodes) == 0:
-        # Vertex is isolated
-        return [tuple([node])]
-    G = nx.Graph()
-    G.add_nodes_from(neighboring_nodes)
-    edges = []
-    # Check DiGraph condition for `node` node.
-    for x in neighboring_nodes:
-        if x != node:
-            assert x in edge_counts[node]  # Check DiGraph condition.
-            assert node in edge_counts[x]  # Check DiGraph condition.
-    for x in neighboring_nodes:
-        for y in neighboring_nodes:
-            if y in edge_counts[x]:
-                assert x in edge_counts[y]  # Check DiGraph condition.
-                if x < y:
-                    edges.append((x, y))
-    G.add_edges_from(edges)
-    maximal_cliques = list(nx.find_cliques(G))
-    max_clique_size = max([len(x) for x in maximal_cliques])
-    maximum_cliques = [x for x in maximal_cliques if len(x) == max_clique_size]
-    # We need to add back in the original node.
-    # We sort for deterministic output.
-    maximum_cliques = sorted([tuple(sorted([node] + x)) for x in maximum_cliques])
-    return maximum_cliques
+    G = _graph_type_to_nx(graph)
+    maximal_cliques = [
+        tuple(sorted(clique))
+        for clique in nx.find_cliques(G)
+        if node in clique
+    ]
+    return _maximum_cliques_containing_node_from_maximal_cliques(
+        node=node,
+        maximal_cliques_containing_node=maximal_cliques,
+    )
 
 
 def test_maximum_cliques_containing_node():
@@ -136,31 +134,37 @@ def find_maximum_cliques_over_all_nodes(
     If a node has more than one maximum clique, the lexicographically smallest
     one is chosen.
     """
-    maximum_clique_for_node = {}
     nodes = list(graph[1].keys())
     cliques_containing_node = {node: set() for node in nodes}
-    nodes_with_more_than_one_maximum_clique = {}
     maximum_clique_counts = defaultdict(int)
 
-    for node in tqdm.tqdm(nodes):
-        cliques = maximum_cliques_containing_node(graph, node)
-        if len(cliques) > 1:
-            nodes_with_more_than_one_maximum_clique[node] = cliques
-        clique = cliques[0]
-        maximum_clique_for_node[node] = clique
+    # One clique enumeration over the full graph (instead of once per node).
+    G = _graph_type_to_nx(graph)
+    maximal_cliques = [tuple(sorted(clique)) for clique in nx.find_cliques(G)]
+    maximal_cliques_by_node = {node: [] for node in nodes}
+    for clique in maximal_cliques:
         for node in clique:
-            cliques_containing_node[node].add(clique)
+            maximal_cliques_by_node[node].append(clique)
+
+    for node in nodes:
+        cliques = _maximum_cliques_containing_node_from_maximal_cliques(
+            node=node,
+            maximal_cliques_containing_node=maximal_cliques_by_node[node],
+        )
+        clique = cliques[0]
+        for member in clique:
+            cliques_containing_node[member].add(clique)
         maximum_clique_counts[clique] += 1
 
     # Check that any two maximum cliques are non-included. We do this by
     # iterating over each node, and looking at cliques covering this node.
-    for node, maximum_cliques in cliques_containing_node.items():
-        maximum_cliques = list(maximum_cliques)
-        for i, c1 in enumerate(maximum_cliques):
-            for j in range(len(maximum_cliques)):
+    for node, maximum_cliques_for_node in cliques_containing_node.items():
+        maximum_cliques_for_node = list(maximum_cliques_for_node)
+        for i, c1 in enumerate(maximum_cliques_for_node):
+            for j in range(len(maximum_cliques_for_node)):
                 if j == i:
                     continue
-                c2 = maximum_cliques[j]
+                c2 = maximum_cliques_for_node[j]
                 if set(c1).issubset(c2):
                     raise Exception(f"Maximum clique {c1} is a subset of {c2}!")
 
@@ -359,7 +363,6 @@ def find_maximal_coresets(
             f"You are trying to recover_single_intbc_clones; this requires `min_coreset_size=1`."
         )
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to find_maximal_coresets ...")
 
     coresets = find_maximum_cliques_over_all_nodes(graph)

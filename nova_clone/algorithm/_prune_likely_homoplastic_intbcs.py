@@ -5,25 +5,11 @@ appearing in more than one clone).
 The main function exposed by this module is `prune_likely_homoplastic_intbcs`.
 """
 
-import logging
-import sys
 import time
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class PruneLikelyHomoplasticIntBCsReturnType(NamedTuple):
@@ -62,7 +48,6 @@ def prune_likely_homoplastic_intbcs(
         p_max_cutoff: IntBCs with p_max lower than this will be pruned.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to prune_likely_homoplastic_intbcs ...")
     intbcs_to_prune = []
     edge_counts, intbc_counts = intbc_graph
