@@ -319,7 +319,7 @@ def test_merge_coresets():
 
 def duplicate_single_intbcs(maximal_coresets: List[set]) -> List[Multiset]:
     """
-    Elevates single-intBC coresets into multisets which repeat the intBC twice,
+    Converts single-intBC coresets into multisets which repeat the intBC twice,
     thereby giving it higher statistical support in all subsequent steps of the algorithm.
     """
     res = []
@@ -355,8 +355,8 @@ def find_maximal_coresets(
     A maximal coreset is a coreset that is not strictly contained in any larger
     coreset, using the above closure rules.
 
-    If `recover_single_intbc_clones`, then maximal coresets with just 1 intBC are elevated to
-    a multiset with 2 intBCs (the same intBC twice).
+    If `recover_single_intbc_clones`, then maximal coresets with just 1 intBC are
+    converted to a multiset with 2 intBCs (the same intBC twice).
     """
     if recover_single_intbc_clones and min_coreset_size != 1:
         raise ValueError(
