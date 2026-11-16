@@ -26,13 +26,13 @@ def _cell_intbc_set_from_intbc_table(
     """
     Get the intBC sets corresponding to each cell.
     """
-    cell_intbc_sets_with_counts = _cell_intbc_sets_with_counts__for_intbc_table(
-        intbc_table=intbc_table,
-    )
-    cell_intbc_sets = {
-        cell: {intbc for (intbc, counts) in intbcs_with_counts.items()}
-        for (cell, intbcs_with_counts) in cell_intbc_sets_with_counts.items()
-    }
+    validate_intbc_table(intbc_table)
+    cell_intbc_sets: Dict[str, Set[str]] = {}
+    # Iterate raw column values to avoid pandas groupby/row overhead.
+    cellbcs = intbc_table["cellBC"].to_numpy()
+    intbcs = intbc_table["intBC"].to_numpy()
+    for cellbc, intbc in zip(cellbcs, intbcs):
+        cell_intbc_sets.setdefault(cellbc, set()).add(intbc)
     return cell_intbc_sets
 
 
@@ -42,14 +42,14 @@ def _cell_intbc_sets_from_intbc_tables(
     """
     Get the intBC sets corresponding to each cell.
     """
-    res = {}
+    res: Dict[str, Set[str]] = {}
     for sample_name, intbc_table in intbc_table_per_sample.items():
-        cell_intbc_sets = _cell_intbc_set_from_intbc_table(
-            intbc_table=intbc_table,
-        )
-        for x, y in cell_intbc_sets.items():
-            assert x not in res
-            res[f"{sample_name}_" + x] = y
+        validate_intbc_table(intbc_table)
+        prefix = f"{sample_name}_"
+        cellbcs = intbc_table["cellBC"].to_numpy()
+        intbcs = intbc_table["intBC"].to_numpy()
+        for cellbc, intbc in zip(cellbcs, intbcs):
+            res.setdefault(prefix + cellbc, set()).add(intbc)
     return res
 
 
