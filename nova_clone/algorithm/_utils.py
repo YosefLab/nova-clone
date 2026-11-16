@@ -51,3 +51,35 @@ def _cell_intbc_sets_from_intbc_tables(
             assert x not in res
             res[f"{sample_name}_" + x] = y
     return res
+
+
+def test__cell_intbc_sets_from_intbc_tables():
+    intbc_table_1 = pd.DataFrame(
+        data=[
+            ["cellBC_1", "AAA", 40],
+            ["cellBC_1", "BBB", 10],
+            ["cellBC_2", "AAA", 40],
+            ["cellBC_2", "CCC", 40],
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+    intbc_table_2 = pd.DataFrame(
+        data=[
+            ["cellBC_1", "DDD", 20],
+            ["cellBC_1", "EEE", 5],
+            ["cellBC_3", "FFF", 40],
+        ],
+        columns=["cellBC", "intBC", "UMI_count"],
+    )
+    res = _cell_intbc_sets_from_intbc_tables(
+        intbc_table_per_sample={
+            "sample1": intbc_table_1,
+            "sample2": intbc_table_2,
+        },
+    )
+    assert res == {
+        "sample1_cellBC_1": {"AAA", "BBB"},
+        "sample1_cellBC_2": {"AAA", "CCC"},
+        "sample2_cellBC_1": {"DDD", "EEE"},
+        "sample2_cellBC_3": {"FFF"},
+    }
