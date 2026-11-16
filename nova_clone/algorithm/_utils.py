@@ -3,6 +3,25 @@ from typing import Set
 from ._types import *
 
 
+def _cell_coreset_overlap(
+    cell_intbc_set: Set[IntBCType],
+    coreset: Coreset[IntBCType],
+) -> int:
+    """
+    Overlap between a cell's intBC set and a coreset.
+
+    For ordinary set coresets this is |intersection|.
+    For Multiset coresets, coreset multiplicity is counted (used for
+    single-intBC clone support).
+    """
+    if isinstance(coreset, (set, frozenset)):
+        return len(cell_intbc_set.intersection(coreset))
+    # Multiset (and similar): sum multiplicities of coreset elements present in the cell.
+    return sum(
+        count for intbc, count in coreset.items() if intbc in cell_intbc_set
+    )
+
+
 def _cell_intbc_sets_with_counts__for_intbc_table(
     intbc_table: IntBCTableType,
 ) -> Dict[CellBCType, Dict[IntBCType, UMICountType]]:

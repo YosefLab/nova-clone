@@ -12,6 +12,7 @@ import numpy as np
 import tqdm
 
 from ._types import *
+from ._utils import _cell_coreset_overlap
 
 from ._logging import logger
 
@@ -50,7 +51,7 @@ def compute_coreset_co_assignment_matrix(
     for cell, cell_intbc_set in tqdm.tqdm(cellbc_intbc_sets.items()):
         coresets_assigned = []
         for coreset_idx, coreset in enumerate(coresets):
-            overlap = len([intbc for intbc in coreset if intbc in cell_intbc_set])  # Handles multiset coresets
+            overlap = _cell_coreset_overlap(cell_intbc_set, coreset)
             if overlap >= min_overlap_for_assigning_cellbc:
                 coresets_assigned.append(coreset_idx)
         for coreset_idx_1 in coresets_assigned:
