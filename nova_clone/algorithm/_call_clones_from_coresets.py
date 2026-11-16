@@ -50,14 +50,14 @@ def call_clones_from_coresets(
     # Validate arguments
     validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
 
-    # Filter intBCs based on min_intbc_umi_count
-    all_cellbc = set(
-        list(
-            _cell_intbc_sets_from_intbc_tables(
-                intbc_table_per_sample=intbc_table_per_sample
-            ).keys()
-        )
-    )
+    # Remember pre-prune cellBCs so cells that lose all intBCs to UMI filtering
+    # still appear in the output mappings. Only the keys are needed here — avoid
+    # building full cell↔intBC sets twice.
+    all_cellbc = {
+        f"{sample_name}_{cellbc}"
+        for sample_name, intbc_table in intbc_table_per_sample.items()
+        for cellbc in intbc_table["cellBC"].unique()
+    }
     intbc_table_per_sample = prune_low_umi_count_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
         min_intbc_umi_count=min_intbc_umi_count
