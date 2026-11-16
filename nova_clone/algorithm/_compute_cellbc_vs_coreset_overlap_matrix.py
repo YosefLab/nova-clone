@@ -5,8 +5,6 @@ and coresets.
 The main function exposed by this module is `compute_cellbc_vs_coreset_overlap_matrix`.
 """
 
-import logging
-import sys
 import time
 from typing import *
 
@@ -17,19 +15,7 @@ import tqdm
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class ComputeCellBCvsCoresetOverlapMatrixReturnType(NamedTuple):
@@ -57,7 +43,6 @@ def compute_cellbc_vs_coreset_overlap_matrix(
     Entry (i, j) contains the overlap of cell i's intBC set with coreset j.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to compute_cellbc_vs_coreset_overlap_matrix ...")
     cells = sorted(cellbc_intbc_sets.keys())
     res_array = np.zeros(shape=(len(cells), len(coresets)))

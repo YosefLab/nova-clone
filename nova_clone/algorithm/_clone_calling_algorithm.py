@@ -4,8 +4,6 @@ Module for the clone calling algorithm.
 The main function exposed by this module is the `clone_calling_algorithm`.
 """
 
-import logging
-import sys
 import time
 from collections import defaultdict
 from copy import deepcopy
@@ -30,19 +28,7 @@ from ._prune_low_umi_count_intbcs import prune_low_umi_count_intbcs
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class CloneCallingAlgorithmReturnType(NamedTuple):
@@ -480,17 +466,14 @@ def clone_calling_algorithm(
         # check the post-QC plots closely.
         _homoplastic_pruning_step__p_max_cutoff = -1
 
-
     st = time.time()
-
-    logger = logging.getLogger(__name__)
-    print(
+    logger.info(
         "*********************************************************************************"
     )
-    print(
+    logger.info(
         '***** Phase 1 of algorithm: Construct clonal signatures (a.k.a. "coresets") *****'
     )
-    print(
+    logger.info(
         "*********************************************************************************"
     )
 
@@ -586,9 +569,9 @@ def clone_calling_algorithm(
     else:
         disjoint_coresets = pruned_coresets
 
-    print("********************************************************************")
-    print("***** Phase 2 of algorithm: Call clones from clonal signatures *****")
-    print("********************************************************************")
+    logger.info("********************************************************************")
+    logger.info("***** Phase 2 of algorithm: Call clones from clonal signatures *****")
+    logger.info("********************************************************************")
 
     call_clones_from_coresets_return = call_clones_from_coresets(
         intbc_table_per_sample=original_intbc_table_per_sample,
@@ -615,7 +598,7 @@ def clone_calling_algorithm(
         recursive_clone_call_integration_hierarchy = {}
         clones = list(clone_call.clone_to_cells_mapping.keys())
         for clone in clones:
-            print(f"Recursively calling clones on clone: {clone} ...")
+            logger.info(f"Recursively calling clones on clone: {clone} ...")
 
             cells_in_clone = sorted(list(clone_call.clone_to_cells_mapping[clone]))
             # A clone may span multiple samples
@@ -994,8 +977,6 @@ def test_recursive_clone_calling_algorithm_mini():
        |    |
       ABC  ABD
     """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(0)
 
     intbc_table = pd.DataFrame(
         data=[
@@ -1077,7 +1058,7 @@ def test_recursive_clone_calling_algorithm_mini():
             ],
         ],
     )
-    print(
+    logger.info(
         f"clone_call_namedtuple.recursive_clone_call_integration_hierarchy = {clone_call_namedtuple.recursive_clone_call_integration_hierarchy}"
     )
     assert clone_call_namedtuple.recursive_clone_call_integration_hierarchy == {
@@ -1106,8 +1087,6 @@ def test_recursive_clone_calling_algorithm_larger():
        |    |
       ABC  ABD
     """
-    logger = logging.getLogger(__name__)
-    logger.setLevel(0)
 
     n_cell_copies = 10
 
@@ -1212,7 +1191,7 @@ def test_recursive_clone_calling_algorithm_larger():
             + [f"sample1_cellBC_44_{i}" for i in range(n_cell_copies)]
         ],
     )
-    print(
+    logger.info(
         f"clone_call_namedtuple.recursive_clone_call_integration_hierarchy = {clone_call_namedtuple.recursive_clone_call_integration_hierarchy}"
     )
     assert clone_call_namedtuple.recursive_clone_call_integration_hierarchy == {

@@ -4,27 +4,13 @@ This module implements filtering of intBCs which are sequencing errors.
 The main function exposed by this module is `prune_likely_sequencing_errors`.
 """
 
-import logging
-import sys
 import time
 
 import editdistance
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class PruneLikelySequencingErrorsReturnType(NamedTuple):
@@ -77,7 +63,6 @@ def prune_likely_sequencing_errors(
         pruned_intbc_graph: The pruned intBC graph.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to prune_likely_sequencing_errors ...")
     intbcs_to_prune = []
     sequencing_errors_and_originals = []
@@ -152,7 +137,7 @@ def test_prune_likely_sequencing_errors():
         edit_distance_cutoff=1,
         co_occurrence_cutoff=0.85,
     ).intbc_graph
-    print(f"pruned_graph = {pruned_graph}")
+    logger.info(f"pruned_graph = {pruned_graph}")
     assert pruned_graph == (
         {
             "AAAA": {"BBBB": 100, "AA": 1},

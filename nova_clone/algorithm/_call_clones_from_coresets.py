@@ -18,25 +18,6 @@ from ._prune_low_umi_count_intbcs import prune_low_umi_count_intbcs
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
 
-import logging
-import sys
-
-from ._types import *
-
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
-
 
 class CallClonesFromCoresetsReturnType(NamedTuple):
     """

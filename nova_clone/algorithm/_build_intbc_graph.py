@@ -4,8 +4,6 @@ Module for building an IntBC graph from a list of intBC tables.
 The main function exposed by this module is `build_intbc_graph`.
 """
 
-import logging
-import sys
 import time
 from collections import defaultdict
 from typing import Set
@@ -13,19 +11,7 @@ from typing import Set
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class BuildIntBCGraphReturnType(NamedTuple):
@@ -54,7 +40,6 @@ def build_intbc_graph(
         intbc_graph: The intBC graph, of type GraphType.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to build_intbc_graph ...")
     edge_counts = defaultdict(lambda: defaultdict(int))
     node_counts = defaultdict(int)

@@ -4,25 +4,11 @@ This module implements filtering of intBCs based on cellBC counts.
 The main function exposed by this module is `prune_low_cellbc_count_intbcs`.
 """
 
-import logging
-import sys
 import time
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class PruneLowCellBCCountIntBCsReturnType(NamedTuple):
@@ -53,7 +39,6 @@ def prune_low_cellbc_count_intbcs(
     This is effective at getting rid of many (but not all) sequencing errors.
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info(f"Going to prune_low_cellbc_count_intbcs ...")
     validate_intbc_table_per_sample(intbc_table_per_sample)
 

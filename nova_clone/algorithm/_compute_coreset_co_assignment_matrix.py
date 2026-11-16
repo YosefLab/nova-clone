@@ -4,8 +4,6 @@ Module for computing the number of cellBCs assigned to two coresets.
 The main function exposed by this module is `compute_coreset_co_assignment_matrix`.
 """
 
-import logging
-import sys
 import time
 from typing import *
 from multiset import Multiset
@@ -15,19 +13,7 @@ import tqdm
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class ComputeCoresetCoAssignmentMatrixReturnType(NamedTuple):
@@ -58,7 +44,6 @@ def compute_coreset_co_assignment_matrix(
     M_{i,j} = #(cell assigned to coresets i and j)
     """
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to compute_coreset_co_assignment_matrix ...")
     num_coresets = len(coresets)
     res = np.zeros(shape=(num_coresets, num_coresets))

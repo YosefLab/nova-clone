@@ -17,8 +17,6 @@ The main function exposed by this module is `keep_reliable_edges`, and it finds
 maximal coresets in the intBC graph using the above two properties.
 """
 
-import logging
-import sys
 import time
 from typing import Set
 
@@ -29,19 +27,7 @@ import tqdm
 
 from ._types import *
 
-
-def _init_logger():
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    fmt_str = "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
-    formatter = logging.Formatter(fmt_str)
-
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-
-
-_init_logger()
+from ._logging import logger
 
 
 class FindMaximalCoresetsReturnType(NamedTuple):
@@ -359,7 +345,6 @@ def find_maximal_coresets(
             f"You are trying to recover_single_intbc_clones; this requires `min_coreset_size=1`."
         )
     st = time.time()
-    logger = logging.getLogger(__name__)
     logger.info("Going to find_maximal_coresets ...")
 
     coresets = find_maximum_cliques_over_all_nodes(graph)
