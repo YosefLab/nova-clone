@@ -75,6 +75,8 @@ def call_clones_from_coresets(
     num_clones = cellbc_vs_coreset_overlap_matrix.shape[1]
     num_cells = cellbc_vs_coreset_overlap_matrix.shape[0]
     assert len(cells) == num_cells
+    # Use a numpy view for assignment to avoid per-cell pandas Series overhead.
+    overlap_matrix = cellbc_vs_coreset_overlap_matrix.to_numpy()
 
     # First compute clone_intbc_counts by using the confidently mapped cells.
     clone_intbc_counts = {
@@ -83,12 +85,9 @@ def call_clones_from_coresets(
     clone_mapping = {cell: {} for cell in cell_intbc_sets}
     clone_to_cells_mapping = {clone_idx: set() for clone_idx in range(num_clones)}
     clone_sizes = defaultdict(int)
-    for cell in tqdm.tqdm(cells):
+    for cell_idx, cell in enumerate(tqdm.tqdm(cells)):
         clones_assigned = list(
-            np.where(
-                cellbc_vs_coreset_overlap_matrix.loc[cell, :]
-                >= min_overlap_for_assigning_cellbc
-            )[0]
+            np.where(overlap_matrix[cell_idx] >= min_overlap_for_assigning_cellbc)[0]
         )
         clone_mapping[cell] = set(clones_assigned)
         if len(clones_assigned) == 1:
