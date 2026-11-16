@@ -9,12 +9,11 @@ from typing import *
 from multiset import Multiset
 
 import numpy as np
-import tqdm
 
 from ._types import *
 from ._utils import _cell_coreset_overlap
 
-from ._logging import logger
+from ._logging import logger, tqdm
 
 
 class ComputeCoresetCoAssignmentMatrixReturnType(NamedTuple):
@@ -48,7 +47,7 @@ def compute_coreset_co_assignment_matrix(
     logger.info("Going to compute_coreset_co_assignment_matrix ...")
     num_coresets = len(coresets)
     res = np.zeros(shape=(num_coresets, num_coresets))
-    for cell, cell_intbc_set in tqdm.tqdm(cellbc_intbc_sets.items()):
+    for cell, cell_intbc_set in tqdm(cellbc_intbc_sets.items()):
         coresets_assigned = []
         for coreset_idx, coreset in enumerate(coresets):
             overlap = _cell_coreset_overlap(cell_intbc_set, coreset)

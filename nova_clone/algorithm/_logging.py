@@ -8,12 +8,17 @@ Use ``set_log_level`` to control verbosity. To silence all algorithm logs:
     set_log_level(logging.WARNING)  # or logging.ERROR / logging.CRITICAL
 
 Or pass ``verbose=False`` to ``clone_calling_algorithm``.
+
+Progress bars (``tqdm``) follow the same verbosity: they are disabled when INFO
+logs are not enabled.
 """
 
 import logging
 import sys
 from contextlib import contextmanager
 from typing import Iterator
+
+import tqdm as _tqdm_mod
 
 _LOGGER_NAME = "nova_clone.algorithm"
 
@@ -42,9 +47,20 @@ def set_log_level(log_level: int) -> None:
     logging.getLogger(_LOGGER_NAME).setLevel(level=log_level)
 
 
+def progress_enabled() -> bool:
+    """Whether algorithm progress bars should be shown."""
+    return logger.isEnabledFor(logging.INFO)
+
+
+def tqdm(iterable=None, *args, **kwargs):
+    """``tqdm`` wrapper that disables itself when algorithm logs are quiet."""
+    kwargs.setdefault("disable", not progress_enabled())
+    return _tqdm_mod.tqdm(iterable, *args, **kwargs)
+
+
 @contextmanager
 def logging_verbosity(verbose: bool) -> Iterator[None]:
-    """Temporarily silence algorithm logs when ``verbose`` is False."""
+    """Temporarily silence algorithm logs (and progress bars) when ``verbose`` is False."""
     if verbose:
         yield
         return

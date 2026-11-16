@@ -9,11 +9,11 @@ import time
 import editdistance
 import numpy as np
 import pandas as pd
-import tqdm
 
 from ._compute_cellbc_vs_coreset_overlap_matrix import (
     compute_cellbc_vs_coreset_overlap_matrix,
 )
+from ._logging import tqdm
 from ._prune_low_umi_count_intbcs import prune_low_umi_count_intbcs
 from ._types import *
 from ._utils import _cell_intbc_sets_from_intbc_tables
@@ -89,7 +89,7 @@ def call_clones_from_coresets(
     clone_mapping = {cell: {} for cell in cell_intbc_sets}
     clone_to_cells_mapping = {clone_idx: set() for clone_idx in range(num_clones)}
     clone_sizes = defaultdict(int)
-    for cell_idx, cell in enumerate(tqdm.tqdm(cells)):
+    for cell_idx, cell in enumerate(tqdm(cells)):
         clones_assigned = list(
             np.where(overlap_matrix[cell_idx] >= min_overlap_for_assigning_cellbc)[0]
         )
@@ -105,7 +105,7 @@ def call_clones_from_coresets(
     # Now it's time to figure out the intBC sets of each clone from their intBC
     # counts
     clone_intbc_sets = {}
-    for clone_idx in tqdm.tqdm(range(num_clones)):
+    for clone_idx in tqdm(range(num_clones)):
         clone_size = clone_sizes[clone_idx]
         kept_intbcs = []
         intbc_counts = sorted(
@@ -146,7 +146,7 @@ def call_clones_from_coresets(
     # cell intBC sets (simply by intersection)
     observed_cell_intbc_sets = cell_intbc_sets
     cell_intbc_sets = {}
-    for cell, clones in tqdm.tqdm(clone_mapping.items()):
+    for cell, clones in tqdm(clone_mapping.items()):
         observed = observed_cell_intbc_sets[cell]
         if len(clones) != 1:
             # We did not confidently map the cell, so we just drop all intBCs

@@ -10,12 +10,11 @@ from typing import *
 
 from multiset import Multiset
 import numpy as np
-import tqdm
 
 from ._types import *
 from ._utils import _cell_coreset_overlap
 
-from ._logging import logger
+from ._logging import logger, tqdm
 
 
 class ComputeCellBCvsCoresetOverlapMatrixReturnType(NamedTuple):
@@ -47,7 +46,7 @@ def compute_cellbc_vs_coreset_overlap_matrix(
     cells = sorted(cellbc_intbc_sets.keys())
     res_array = np.zeros(shape=(len(cells), len(coresets)))
 
-    for cell_idx, cell in tqdm.tqdm(list(enumerate(cells))):
+    for cell_idx, cell in tqdm(list(enumerate(cells))):
         cell_intbc_set = cellbc_intbc_sets[cell]
         for coreset_idx, coreset in enumerate(coresets):
             res_array[cell_idx, coreset_idx] = _cell_coreset_overlap(
