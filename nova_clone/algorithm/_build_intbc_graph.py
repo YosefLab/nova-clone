@@ -47,12 +47,14 @@ def build_intbc_graph(
         intbc_table_per_sample=intbc_table_per_sample,
     )
     for cell_intbc_set in cell_intbc_sets.values():
-        for intbc_1 in cell_intbc_set:
+        # Iterate unordered pairs once, then mirror edges (avoids the O(k^2)
+        # double pass with self-skips).
+        intbcs = list(cell_intbc_set)
+        for i, intbc_1 in enumerate(intbcs):
             node_counts[intbc_1] += 1
-            for intbc_2 in cell_intbc_set:
-                if intbc_1 == intbc_2:
-                    continue
+            for intbc_2 in intbcs[i + 1 :]:
                 edge_counts[intbc_1][intbc_2] += 1
+                edge_counts[intbc_2][intbc_1] += 1
     # Make sure that intBCs with no neighbors are present in the edge dict!
     for intbc in node_counts:
         edge_counts[intbc]
