@@ -217,3 +217,82 @@ def test_call_clones_from_coresets():
     assert cc.clone_intbc_sets["clone_1"] == {"C"}
     assert cc.cell_intbc_sets[c1] == {"A", "B"}
     assert cc.cell_intbc_sets[c2] == {"C"}
+
+
+def restrict_elevated_single_intbc_clones(
+    clone_call: CloneCallType,
+    coresets: List[Coreset[str]],
+) -> CloneCallType:
+    """
+    Post-process elevated single-intBC clones after phase 2.
+
+    For each coreset with a single unique intBC of multiplicity >= 2, keep only
+    cells whose cell intBC set is exactly that signature intBC, and restrict the
+    clone intBC set to that signature. Multiplicity-1 coresets are left unchanged.
+
+    Placeholder identity until the post-processing logic is implemented.
+    """
+    return clone_call
+
+
+def test_restrict_elevated_single_intbc_clones():
+    """
+    Post phase-2 restriction for elevated single-intBC clones.
+
+    Example: signature Multiset([a,a]); after de-novo, clone intBC set is
+    {a, z} with cells {a}, {a}, {a, z}. Post-process keeps only the {a} cells
+    and sets the clone intBC set to {a}.
+
+    This must fail if we only pin the clone intBC set during phase 2 (that
+    would keep the {a, z} cell with a reduced set {a}). It fails on current
+    NovaClone (no post-process). It passes once restrict_elevated_single_intbc_clones
+    implements the keep-exact-signature-cells rule.
+    """
+    # Phase-2-like input via call_clones_from_coresets:
+    # clone_0: elevated Multiset([a,a]); cells a0/a1 have only a; a2 has a+z
+    # clone_1: multiplicity-1 Multiset([c]) (collapsed multi-intBC); cells have c+e
+    rows = [
+        ["a0", "a", 10],
+        ["a1", "a", 10],
+        ["a2", "a", 10],
+        ["a2", "z", 10],
+    ]
+    for i in range(5):
+        rows.extend([[f"c{i}", "c", 10], [f"c{i}", "e", 10]])
+    intbc_table = pd.DataFrame(rows, columns=["cellBC", "intBC", "UMI_count"])
+    coresets = [
+        Multiset(["a"]) + Multiset(["a"]),
+        Multiset(["c"]),
+    ]
+    cc = call_clones_from_coresets(
+        intbc_table_per_sample={"s0": intbc_table},
+        min_intbc_umi_count=1,
+        coresets=coresets,
+        min_overlap_for_assigning_cellbc=1,
+        min_intbc_counts_for_adding_intbc_to_clone_intbc_set=1,
+        min_intbc_fraction_for_adding_to_clone_intbc_set=0.0,
+        edit_distance_cutoff=0,
+        custom_intbc_filtering_function=lambda intbc: False,
+    ).clone_call
+
+    # Sanity: phase 2 mapped all three a* cells and de-novo-expanded clone_0.
+    assert cc.clone_to_cells_mapping["clone_0"] == {"s0_a0", "s0_a1", "s0_a2"}
+    assert cc.clone_intbc_sets["clone_0"] == {"a", "z"}
+    assert cc.cell_intbc_sets["s0_a0"] == {"a"}
+    assert cc.cell_intbc_sets["s0_a1"] == {"a"}
+    assert cc.cell_intbc_sets["s0_a2"] == {"a", "z"}
+
+    cc = restrict_elevated_single_intbc_clones(clone_call=cc, coresets=coresets)
+
+    # Elevated single-intBC: drop cells whose intBC set is not exactly {a}.
+    assert cc.clone_to_cells_mapping["clone_0"] == {"s0_a0", "s0_a1"}
+    assert cc.clone_intbc_sets["clone_0"] == {"a"}
+    assert cc.cell_to_clones_mapping["s0_a0"] == {"clone_0"}
+    assert cc.cell_to_clones_mapping["s0_a1"] == {"clone_0"}
+    assert cc.cell_to_clones_mapping["s0_a2"] == set()
+    assert cc.cell_intbc_sets["s0_a0"] == {"a"}
+    assert cc.cell_intbc_sets["s0_a1"] == {"a"}
+    assert cc.cell_intbc_sets["s0_a2"] == set()
+    # Multiplicity-1 coreset: unchanged de-novo expansion.
+    assert cc.clone_intbc_sets["clone_1"] == {"c", "e"}
+    assert "s0_c0" in cc.clone_to_cells_mapping["clone_1"]
