@@ -51,8 +51,8 @@ def call_clones_from_coresets(
     validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
 
     # Remember pre-prune cellBCs so cells that lose all intBCs to UMI filtering
-    # still appear in the output mappings. Only the keys are needed here — avoid
-    # building full cell↔intBC sets twice.
+    # still appear in the output mappings. Only the keys are needed here - avoid
+    # building full cell <-> intBC sets twice.
     all_cellbc = {
         f"{sample_name}_{cellbc}"
         for sample_name, intbc_table in intbc_table_per_sample.items()
