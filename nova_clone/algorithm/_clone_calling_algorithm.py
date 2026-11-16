@@ -14,7 +14,10 @@ import pandas as pd
 import seaborn as sns
 
 from ._build_intbc_graph import build_intbc_graph
-from ._call_clones_from_coresets import call_clones_from_coresets
+from ._call_clones_from_coresets import (
+    call_clones_from_coresets,
+    restrict_elevated_single_intbc_clones,
+)
 from ._compute_coreset_co_assignment_matrix import compute_coreset_co_assignment_matrix
 from ._find_maximal_coresets import find_maximal_coresets
 from ._keep_reliable_edges import keep_reliable_edges
@@ -352,6 +355,9 @@ def clone_calling_algorithm(
             available, we recommend using these to confirm that the single-intBC
             clones are high quality, and if there is overmerging we recommend
             splitting into different clones based on evolving lineage marks.
+            After phase 2, elevated single-intBC clones are post-processed to
+            keep only cells whose de-novo intBC set equals the signature intBC,
+            and the clone intBC set is restricted to that signature.
         verbose: If False, silence all algorithm logging output for this call.
         _sequencing_error_pruning_step__co_occurrence_cutoff: This establishes
             how frequently intBC `x` needs to co-occur with intBC `y` having a
@@ -650,6 +656,14 @@ def _clone_calling_algorithm(
         validate=False,
     )
     clone_call = call_clones_from_coresets_return.clone_call
+
+    # For elevated single-intBC coresets (Multiset signature with multiplicity
+    # >= 2), keep only cells whose de-novo intBC set is exactly the signature
+    # intBC, and restrict the clone intBC set accordingly.
+    clone_call = restrict_elevated_single_intbc_clones(
+        clone_call=clone_call,
+        coresets=disjoint_coresets,
+    )
 
     # Remove empty clones -- can happen in very extreme cases (low quality input data)
     # due to e.g. (1) the disjointing step, which causes a putative clonal signature

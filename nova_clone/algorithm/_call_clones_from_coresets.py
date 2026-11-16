@@ -229,10 +229,56 @@ def restrict_elevated_single_intbc_clones(
     For each coreset with a single unique intBC of multiplicity >= 2, keep only
     cells whose cell intBC set is exactly that signature intBC, and restrict the
     clone intBC set to that signature. Multiplicity-1 coresets are left unchanged.
-
-    Placeholder identity until the post-processing logic is implemented.
     """
-    return clone_call
+    clone_to_cells_mapping = {
+        clone: set(cells)
+        for clone, cells in clone_call.clone_to_cells_mapping.items()
+    }
+    cell_to_clones_mapping = {
+        cell: set(clones)
+        for cell, clones in clone_call.cell_to_clones_mapping.items()
+    }
+    clone_intbc_sets = {
+        clone: set(intbcs)
+        for clone, intbcs in clone_call.clone_intbc_sets.items()
+    }
+    cell_intbc_sets = {
+        cell: set(intbcs) for cell, intbcs in clone_call.cell_intbc_sets.items()
+    }
+
+    for coreset_idx, coreset in enumerate(coresets):
+        unique_intbcs = set(coreset)
+        if len(unique_intbcs) != 1:
+            continue
+        signature_intbc = next(iter(unique_intbcs))
+        multiplicity = sum(1 for intbc in coreset if intbc == signature_intbc)
+        if multiplicity < 2:
+            continue
+
+        clone = f"clone_{coreset_idx}"
+        if clone not in clone_to_cells_mapping:
+            continue
+
+        signature_set = {signature_intbc}
+        kept_cells = set()
+        for cell in clone_to_cells_mapping[clone]:
+            if cell_intbc_sets.get(cell, set()) == signature_set:
+                kept_cells.add(cell)
+            else:
+                cell_to_clones_mapping[cell] = cell_to_clones_mapping.get(
+                    cell, set()
+                ) - {clone}
+                if len(cell_to_clones_mapping[cell]) == 0:
+                    cell_intbc_sets[cell] = set()
+        clone_to_cells_mapping[clone] = kept_cells
+        clone_intbc_sets[clone] = signature_set
+
+    return CloneCallType(
+        clone_to_cells_mapping=clone_to_cells_mapping,
+        cell_to_clones_mapping=cell_to_clones_mapping,
+        clone_intbc_sets=clone_intbc_sets,
+        cell_intbc_sets=cell_intbc_sets,
+    )
 
 
 def test_restrict_elevated_single_intbc_clones():
