@@ -43,9 +43,7 @@ def prune_low_cellbc_count_intbcs(
     validate_intbc_table_per_sample(intbc_table_per_sample)
 
     all_intbc_tables_concatenated = pd.concat(intbc_table_per_sample.values())
-    cellbc_counts = all_intbc_tables_concatenated.groupby("intBC").apply(
-        lambda df: df.shape[0]
-    )
+    cellbc_counts = all_intbc_tables_concatenated.groupby("intBC").size()
     allowed_intbcs = set(cellbc_counts[cellbc_counts >= min_intbc_cellbc_count].index)
 
     new_intbc_table_per_sample = {}
