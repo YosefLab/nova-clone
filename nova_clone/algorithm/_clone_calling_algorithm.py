@@ -504,6 +504,7 @@ def _clone_calling_algorithm(
     _coreset_disjointing_step__make_disjoint: bool = True, # Private parameter, not exposed to the user. Used for testing.
     _final_cell_assignment_step__min_overlap_for_assigning_cellbc: int = 1, # Private parameter, not exposed to the user. Used for the recursive call of the algorithm.
     _call_clones_from_coresets_step__min_intbc_counts_for_adding_intbc_to_clone_intbc_set: Optional[int] = None, # Private parameter, not exposed to the user. Used for testing.
+    _validate_inputs: bool = True, # Private parameter. Recursive calls skip re-validation.
 ) -> CloneCallingAlgorithmReturnType:
     """Implementation of clone_calling_algorithm (logging handled by the public wrapper)."""
     if recursive:
@@ -537,8 +538,9 @@ def _clone_calling_algorithm(
         "*********************************************************************************"
     )
 
-    # Validate arguments
-    validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
+    # Validate arguments (skipped on recursive calls — schema already checked).
+    if _validate_inputs:
+        validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
     original_intbc_table_per_sample = deepcopy(
         intbc_table_per_sample
     )  # After identifying the coresets, we will use the original intBC tables to map cells to clones, call sequencing errors and homoplastic intBCs.
@@ -550,18 +552,21 @@ def _clone_calling_algorithm(
     intbc_table_per_sample = prune_low_umi_count_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
         min_intbc_umi_count=min_intbc_umi_count,
+        validate=False,
     ).intbc_table_per_sample
 
     # Filter intBCs based on `custom_intbc_filtering_function`
     intbc_table_per_sample = prune_custom_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
         custom_intbc_filtering_function=custom_intbc_filtering_function,
+        validate=False,
     ).intbc_table_per_sample
 
     # Filter intBCs based on `min_intbc_cellbc_count`
     intbc_table_per_sample = prune_low_cellbc_count_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
         min_intbc_cellbc_count=min_intbc_cellbc_count,
+        validate=False,
     ).intbc_table_per_sample
 
     # Build the intBC graph.
@@ -642,6 +647,7 @@ def _clone_calling_algorithm(
         min_intbc_fraction_for_adding_to_clone_intbc_set=min_intbc_fraction,
         edit_distance_cutoff=edit_distance_cutoff_phase_2,
         custom_intbc_filtering_function=custom_intbc_filtering_function,
+        validate=False,
     )
     clone_call = call_clones_from_coresets_return.clone_call
 
@@ -714,6 +720,7 @@ def _clone_calling_algorithm(
             intbc_table_per_sample_for_clone = prune_low_umi_count_intbcs(
                 intbc_table_per_sample=intbc_table_per_sample_for_clone,
                 min_intbc_umi_count=min_intbc_umi_count,
+                validate=False,
             ).intbc_table_per_sample
             if _is_empty(intbc_table_per_sample_for_clone):
                 logger.info(
@@ -729,6 +736,7 @@ def _clone_calling_algorithm(
             intbc_table_per_sample_for_clone = prune_custom_intbcs(
                 intbc_table_per_sample=intbc_table_per_sample_for_clone,
                 custom_intbc_filtering_function=custom_intbc_filtering_function,
+                validate=False,
             ).intbc_table_per_sample
             if _is_empty(intbc_table_per_sample_for_clone):
                 logger.info(
@@ -744,6 +752,7 @@ def _clone_calling_algorithm(
             intbc_table_per_sample_for_clone = prune_low_cellbc_count_intbcs(
                 intbc_table_per_sample=intbc_table_per_sample_for_clone,
                 min_intbc_cellbc_count=min_intbc_cellbc_count,
+                validate=False,
             ).intbc_table_per_sample
             if _is_empty(intbc_table_per_sample_for_clone):
                 logger.info(
@@ -833,6 +842,7 @@ def _clone_calling_algorithm(
                 recursive=True,
                 recursive_min_fraction_uniquely_mapped_cells_to_recurse=recursive_min_fraction_uniquely_mapped_cells_to_recurse,
                 recursive_min_cells_assigned=recursive_min_cells_assigned,
+                _validate_inputs=False,
             )
             # Check how many cells were mapped in the recursive clone call, to determine if we should retain the recursive split.
             num_subclones_found = len(

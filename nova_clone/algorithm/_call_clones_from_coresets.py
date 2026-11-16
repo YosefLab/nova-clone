@@ -41,14 +41,17 @@ def call_clones_from_coresets(
     min_intbc_fraction_for_adding_to_clone_intbc_set: float,
     edit_distance_cutoff: int,
     custom_intbc_filtering_function: str,
+    validate: bool = True,
 ) -> CallClonesFromCoresetsReturnType:
     """
     Call clones given the coresets characterizing each clone.
+
+    Set ``validate=False`` when the caller has already validated the tables.
     """
     st = time.time()
 
-    # Validate arguments
-    validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
+    if validate:
+        validate_intbc_table_per_sample(intbc_table_per_sample=intbc_table_per_sample)
 
     # Remember pre-prune cellBCs so cells that lose all intBCs to UMI filtering
     # still appear in the output mappings. Only the keys are needed here - avoid
@@ -60,7 +63,8 @@ def call_clones_from_coresets(
     }
     intbc_table_per_sample = prune_low_umi_count_intbcs(
         intbc_table_per_sample=intbc_table_per_sample,
-        min_intbc_umi_count=min_intbc_umi_count
+        min_intbc_umi_count=min_intbc_umi_count,
+        validate=False,
     ).intbc_table_per_sample
     cell_intbc_sets = _cell_intbc_sets_from_intbc_tables(
         intbc_table_per_sample=intbc_table_per_sample,

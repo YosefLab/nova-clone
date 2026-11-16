@@ -33,16 +33,20 @@ class PruneLowUMICountIntBCsReturnType(NamedTuple):
 def prune_low_umi_count_intbcs(
     intbc_table_per_sample: Dict[SampleNameType, IntBCTableType],
     min_intbc_umi_count: int,
+    validate: bool = True,
 ) -> PruneLowUMICountIntBCsReturnType:
     """
     Prunes away all intBCs with low UMI counts.
 
     This is effective at getting rid of background RNA contaminants and many
     (but not all) sequencing errors.
+
+    Set ``validate=False`` when the caller has already validated the tables.
     """
     st = time.time()
     logger.info("Going to prune_low_umi_count_intbcs ...")
-    validate_intbc_table_per_sample(intbc_table_per_sample)
+    if validate:
+        validate_intbc_table_per_sample(intbc_table_per_sample)
     new_intbc_table_per_sample = {}
     for sample_name, intbc_table in intbc_table_per_sample.items():
         new_intbc_table = intbc_table[
@@ -56,7 +60,6 @@ def prune_low_umi_count_intbcs(
         intbc_table.shape[0] for intbc_table in new_intbc_table_per_sample.values()
     )
     fraction_discarded_intbcs = numerator / (denominator + 1e-9)
-    validate_intbc_table_per_sample(new_intbc_table_per_sample)
     total_time = time.time() - st
     res = PruneLowUMICountIntBCsReturnType(
         intbc_table_per_sample=new_intbc_table_per_sample,

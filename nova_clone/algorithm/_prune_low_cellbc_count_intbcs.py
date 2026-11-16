@@ -32,15 +32,19 @@ class PruneLowCellBCCountIntBCsReturnType(NamedTuple):
 def prune_low_cellbc_count_intbcs(
     intbc_table_per_sample: Dict[SampleNameType, IntBCTableType],
     min_intbc_cellbc_count: int,
+    validate: bool = True,
 ) -> PruneLowCellBCCountIntBCsReturnType:
     """
     Prunes away all intBCs appearing in to few cellBCs.
 
     This is effective at getting rid of many (but not all) sequencing errors.
+
+    Set ``validate=False`` when the caller has already validated the tables.
     """
     st = time.time()
     logger.info(f"Going to prune_low_cellbc_count_intbcs ...")
-    validate_intbc_table_per_sample(intbc_table_per_sample)
+    if validate:
+        validate_intbc_table_per_sample(intbc_table_per_sample)
 
     all_intbc_tables_concatenated = pd.concat(intbc_table_per_sample.values())
     cellbc_counts = all_intbc_tables_concatenated.groupby("intBC").size()
@@ -60,7 +64,6 @@ def prune_low_cellbc_count_intbcs(
         intbc_table.shape[0] for intbc_table in new_intbc_table_per_sample.values()
     )
     fraction_discarded_intbcs = numerator / (denominator + 1e-9)
-    validate_intbc_table_per_sample(new_intbc_table_per_sample)
     total_time = time.time() - st
     res = PruneLowCellBCCountIntBCsReturnType(
         intbc_table_per_sample=new_intbc_table_per_sample,
