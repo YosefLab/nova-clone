@@ -44,13 +44,13 @@ def qc_clone_intbc_sets(
         intbc_counts = defaultdict(int)
         intbc_umis = defaultdict(list)
         cells_in_clone = {
-            cellbc.split("_", 1)[1]  # Remove sample prefix
+            cellbc  # Remove sample prefix
             for cellbc, clones in cell_to_clones_mapping.items()
             if clones == {clone}
         }
         for sample, intbc_table in intbc_table_per_sample.items():
             # Subset the intbc_table to the cells in the clone
-            intbc_table = intbc_table[intbc_table["cellBC"].isin(cells_in_clone)]
+            intbc_table = intbc_table[(sample + "_" + intbc_table["cellBC"]).isin(cells_in_clone)]
             # Count intBCs
             for _, row in intbc_table.iterrows():
                 intbc = row["intBC"]
@@ -85,7 +85,6 @@ def qc_clone_intbc_sets(
     # The number of intBCs per clone is limited to `max_intbcs_per_clone`.
     # - We add a horizontal line equal to the number of cells in the clone.
     plots_dfs = dict()
-    matplotlib.pyplot.rcdefaults()
     matplotlib.rcParams['pdf.fonttype'] = 42
     matplotlib.rcParams['ps.fonttype'] = 42
     matplotlib.rcParams['font.size'] = 13
